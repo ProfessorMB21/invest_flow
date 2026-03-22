@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Update dependencies
+        run: flutter pub outdated
+
       - name: Analyze code
         run: flutter analyze
       
