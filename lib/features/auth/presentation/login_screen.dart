@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,7 +10,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
-  final _passCtril = TextEditingController();
+  final _passCtrl = TextEditingController();
   bool _isLoading = false;
 
   Future<void> _login() async {
@@ -19,15 +18,43 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await Supabase.instance.client.auth.signInWithPassword(
         email: _emailCtrl.text,
-        password: _passCtril.text,
+        password: _passCtrl.text,
       );
       if (mounted) context.go('/');
-    } catch (e) {
+    } on AuthException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+          SnackBar(
+            content: Text(_getAuthErrorMessage(e.message)),
+            backgroundColor: Colors.red.shade400,
+            behavior: SnackBarBehavior.floating,
+          )
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("An unexpected error occurred."),
+          backgroundColor: Colors.red.shade400,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _getAuthErrorMessage(String? message) {
+    switch (message) {
+      case 'Invalid login credentials':
+        return 'Invalid email or password';
+      case 'Email not confirmed':
+        return 'Please verify your email address';
+      case 'User already registered':
+        return 'An account with this email already exists';
+      default:
+        return message ?? 'Authentication failed';
     }
   }
 

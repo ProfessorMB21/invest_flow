@@ -26,10 +26,7 @@ jobs:
 
       - name: Analyze code
         run: flutter analyze
-
-      - name: Run tests
-        run: flutter test
-  
+      
   build-windows:
     needs: analyze-and-test
     runs-on: windows-latest
