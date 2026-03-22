@@ -52,7 +52,7 @@ jobs:
       
       - name: Create distribution zip
         run: |
-          Compress-Archive -Path build/windows/runner/Release/* -DestinationPath build/windows/InvestFlow.zip
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/windows/InvestFlow.zip
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
