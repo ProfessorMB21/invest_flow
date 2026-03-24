@@ -13,22 +13,21 @@ class SupabaseClient {
     // load from assets
     await dotenv.load(fileName: ".env");
 
-    if (dotenv.env['SUPABASE_URL'] == null) {
-      final envContent = await rootBundle.loadString('.env');
-      final lines = envContent.split('\n');
-      for (var line in lines) {
-        if (line.contains('=')) {
-          final parts = line.split('=');
-          if (parts.length == 2) {
-            dotenv.env[parts[0].trim()] = parts[1].trim();
-          }
-        }
-      }
+    final url = dotenv.env['SUPABASE_URL'];
+    final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
+
+    if (url == null || url.isEmpty) {
+      throw Exception('SUPABASE_URL is not set in .env file');
+    }
+    if (anonKey == null || anonKey.isEmpty) {
+      throw Exception('SUPABASE_ANON_KEY is not set in .env file');
     }
 
+    print('***** Supabase URL: ${url.substring(0,20)}... ********');
+
     await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL']!,
-      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+      url: url,
+      anonKey: anonKey
     );
     supabase = Supabase.instance;
   }

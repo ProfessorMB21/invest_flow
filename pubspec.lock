@@ -9,14 +9,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "93.0.0"
-  adaptive_number:
-    dependency: transitive
-    description:
-      name: adaptive_number
-      sha256: "3a567544e9b5c9c803006f51140ad544aedc79604fd4f3f2c1380003f97c1d77"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.0"
   analyzer:
     dependency: transitive
     description:
@@ -221,10 +213,10 @@ packages:
     dependency: transitive
     description:
       name: dart_jsonwebtoken
-      sha256: c6ecb3bb991c459b91c5adf9e871113dcb32bbe8fe7ca2c92723f88ffc1e0b7a
+      sha256: cb79ed79baa02b4f59a597bf365873cbd83f9bb15273d63f7803802d21717c7d
       url: "https://pub.dev"
     source: hosted
-    version: "3.3.2"
+    version: "3.4.0"
   dart_style:
     dependency: transitive
     description:
@@ -233,30 +225,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.7"
-  ed25519_edwards:
-    dependency: transitive
-    description:
-      name: ed25519_edwards
-      sha256: "6ce0112d131327ec6d42beede1e5dfd526069b18ad45dcf654f15074ad9276cd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.1"
   envied:
     dependency: "direct main"
     description:
       name: envied
-      sha256: "2ca9842c7f513ab527e4f35a58331d6f9a7f90f270b5ba501d73ff2d9fa449ff"
+      sha256: cac8bf0df6c53bd3c3511a6ee295ba6b86e6547df25c8c8648fc479128d2317c
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.3"
+    version: "1.3.4"
   envied_generator:
     dependency: "direct main"
     description:
       name: envied_generator
-      sha256: "4ed57d61dccb8e546a811b6a3dc5ebcef24bdfe60febbbd6fef31342ab15f9e5"
+      sha256: ac7c2d0871a25a917f145a42ca6b4596b81b97d71017a511e0b3ffa60067cf75
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.3"
+    version: "1.3.4"
   equatable:
     dependency: transitive
     description:
