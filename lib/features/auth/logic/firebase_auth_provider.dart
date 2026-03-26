@@ -17,13 +17,6 @@ class FirebaseAuthProvider implements AuthProviderInterface{
     if (kDebugMode) {
       print('***** Firebase Auth Provider Initialized *****');
     }
-    // Create user profile
-    await _ensureUserProfileCollection();
-  }
-
-  Future<void> _ensureUserProfileCollection() async {
-    // initialize user profiles collection
-    await _firestore!.collection('profiles').limit(1).get();
   }
 
   @override
@@ -68,9 +61,13 @@ class FirebaseAuthProvider implements AuthProviderInterface{
     if (!profileDoc.exists) {
       await profileRef.set({
         'email': user.email,
-        'fullName': user.displayName ?? '',
+        'fullName': user.displayName ?? user.email?.split('@').first ?? 'User',
         'role': 'investor',
-        'createdAt': FieldValue.serverTimestamp()
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'phoneNumber': user.phoneNumber,
+        'profileImageUrl': user.photoURL,
+        'isVerified': false,
       });
     }
   }

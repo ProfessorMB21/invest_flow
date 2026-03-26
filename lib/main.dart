@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:investflow/core/services/database_service.dart';
+import 'package:investflow/core/services/firestore_init_service.dart';
 import 'package:investflow/core/theme/app_theme.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/auth/logic/auth_provider_interface.dart';
@@ -32,6 +34,16 @@ void main() async {
 
   // Initialize Auth Service (this also sets up the ChangeNotifier)
   await AuthService().initialize(useFirebase: true);
+
+  // Initialize DB Service
+  DatabaseService().initialize();
+
+  // Initialize Firestore collections
+  await FirestoreInitService().initialize();
+  final status = await FirestoreInitService().getInitializationStatus();
+  if (kDebugMode) {
+    print('Firestore init status: $status');
+  }
 
   // Initialize router with AuthService as refreshListenable
   _router = GoRouter(
@@ -87,7 +99,7 @@ class InvestFlowApp extends ConsumerWidget {
     final router = ref.watch(goRouterProvider);
     return MaterialApp.router(
       title: 'InvestFlow',
-      theme: AppTheme.lightTheme,
+      theme: AppTheme.darkTheme,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );
