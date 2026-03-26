@@ -19,13 +19,21 @@ class FirebaseAuthProvider implements AuthProviderInterface{
     }
   }
 
+  // ======================= Auth methods
   @override
   Future<void> signIn(String email, String password) async {
     try {
       await _auth!.signInWithEmailAndPassword(email: email, password: password);
 
-      // ensure user profiles exist in firestore
-      await _createOrUpdateUserProfile();
+      // auto create profile if doesn't exist
+      final user = _auth!.currentUser;
+      if (user != null) {
+        await createUserProfile(
+            user.uid,
+            user.email ?? '',
+            user.displayName ?? 'user${user.uid}'
+        );
+      }
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.code, e.message ?? '');
     }
@@ -39,36 +47,16 @@ class FirebaseAuthProvider implements AuthProviderInterface{
         password: password
       );
 
-      // create user profile in firestore
-      await _firestore!.collection('profile').doc(credential.user!.uid).set({
-        'email': email,
-        'fullName': fullName,
-        'role': 'investor',
-        'createdAt': FieldValue.serverTimestamp()
-      });
+      // create user profile immediately after sign up
+      if (credential.user != null) {
+        await createUserProfile(
+          credential.user!.uid,
+          email,
+          fullName
+        );
+      }
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.code, e.message ?? '');
-    }
-  }
-
-  Future<void> _createOrUpdateUserProfile() async {
-    final user = _auth!.currentUser;
-    if (user == null) return;
-
-    final profileRef = _firestore!.collection('profile').doc(user.uid);
-    final profileDoc = await profileRef.get();
-
-    if (!profileDoc.exists) {
-      await profileRef.set({
-        'email': user.email,
-        'fullName': user.displayName ?? user.email?.split('@').first ?? 'User',
-        'role': 'investor',
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'phoneNumber': user.phoneNumber,
-        'profileImageUrl': user.photoURL,
-        'isVerified': false,
-      });
     }
   }
 
@@ -77,6 +65,58 @@ class FirebaseAuthProvider implements AuthProviderInterface{
     await _auth!.signOut();
   }
 
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth!.sendPasswordResetEmail(email: email);
+  }
+
+  // ========================  Profile methods
+  @override
+  Future<void> createUserProfile(
+      String userId,
+      String email,
+      String fullName,
+      {String? role}
+      ) async {
+    try {
+    final profileRef = _firestore!.collection('profile').doc(userId);
+    final profileDoc = await profileRef.get();
+
+    if (!profileDoc.exists) {
+      await profileRef.set({
+        'email': email,
+        'fullName': fullName.isNotEmpty ? fullName : email.split('@').first,
+        'role': role ?? 'investor',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'isVerified': false,
+      });
+      if (kDebugMode) {
+        print("User profile created: $userId");
+      }
+    }
+    } catch (e) {
+      if (kDebugMode) {
+        print('failed to create user profile');
+      }
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getUserProfile(String userId) async {
+    final doc = await _firestore!.collection('profiles').doc(userId).get();
+    return doc.exists ? doc.data() : null;
+  }
+
+  @override
+  Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
+    await _firestore!.collection('profiles').doc(userId).update({
+      ...data,
+      'updateAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // ============================== State methods
   @override
   Stream<AuthState> get authStateChanges {
     return _auth!.authStateChanges().map((user) {
