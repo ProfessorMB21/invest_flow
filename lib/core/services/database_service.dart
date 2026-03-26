@@ -9,17 +9,43 @@ class DatabaseService {
   factory DatabaseService() => _instance;
   DatabaseService._internal();
 
-  late final UserRepository userRepository;
-  late final ProjectRepository projectRepository;
-  late final InvestmentRepository investmentRepository;
-  late final MilestoneRepository milestoneRepository;
-  late final MessageRepository messageRepository;
+  UserRepository? _userRepository;
+  ProjectRepository? _projectRepository;
+  InvestmentRepository? _investmentRepository;
+  MilestoneRepository? _milestoneRepository;
+  MessageRepository? _messageRepository;
+
+  // Getters
+  UserRepository get userRepository {
+    _userRepository ??= UserRepository();
+    return _userRepository!;
+  }
+
+  ProjectRepository get projectRepository {
+    _projectRepository ??= ProjectRepository();
+    return _projectRepository!;
+  }
+
+  InvestmentRepository get investmentRepository {
+    _investmentRepository ??= InvestmentRepository();
+    return _investmentRepository!;
+  }
+
+  MilestoneRepository get milestoneRepository {
+    _milestoneRepository ??= MilestoneRepository();
+    return _milestoneRepository!;
+  }
+
+  MessageRepository get messageRepository {
+    _messageRepository ??= MessageRepository();
+    return _messageRepository!;
+  }
 
   void initialize() {
-    userRepository = UserRepository();
-    projectRepository = ProjectRepository();
-    investmentRepository = InvestmentRepository();
-    milestoneRepository = MilestoneRepository();
-    messageRepository = MessageRepository();
+    userRepository; // Trigger lazy init
+    projectRepository;
+    investmentRepository;
+    milestoneRepository;
+    messageRepository;
   }
 }

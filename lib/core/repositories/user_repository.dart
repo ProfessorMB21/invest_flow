@@ -29,7 +29,7 @@ class UserRepository {
     }
   }
 
-  // Get user profile stream
+  // Get user profile stream in real-time
   Stream<UserProfile?> getProfileStream(String userId) {
     return _collection.doc(userId).snapshots().map((doc) {
       if (doc.exists) {

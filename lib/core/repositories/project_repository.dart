@@ -50,7 +50,7 @@ class ProjectRepository {
         .toList());
   }
 
-  // Get active projects
+  // Get active projects only
   Stream<List<Project>> getActiveProjectsStream() {
     return _collection
         .where('status', isEqualTo: 'active')
@@ -59,6 +59,17 @@ class ProjectRepository {
         .map((snapshot) => snapshot.docs
         .map((doc) => Project.fromFirestore(doc))
         .toList());
+  }
+
+  // Get projects where user is investor
+  Stream<List<Project>> getProjectsByInvestorStream(String investorId) {
+    return _collection
+        .where('investorIds', arrayContains: investorId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+          .map((doc) => Project.fromFirestore(doc))
+          .toList());
   }
 
   // Update project
@@ -89,6 +100,33 @@ class ProjectRepository {
   // Delete project
   Future<void> deleteProject(String projectId) async {
     await _collection.doc(projectId).delete();
+  }
+
+  // Get project stats
+Future<Map<String, dynamic>> getProjectStats(String projectId) async {
+    final projectDoc = await _collection.doc(projectId).get();
+    if (!projectDoc.exists) return {};
+
+    final project = Project.fromFirestore(projectDoc);
+    final investmentSnapshot = await _firestore
+      .collection('investments')
+      .where('projectId', isEqualTo: projectId)
+      .where('status', isEqualTo: 'confirmed')
+      .get();
+
+    double totalInvested = 0;
+    for (var doc in investmentSnapshot.docs) {
+      final data = doc.data();
+      totalInvested += (data['amount'] ?? 0).toDouble();
+    }
+
+    return {
+      'raiseAmount': totalInvested,
+      'investorCount': investmentSnapshot.docs.length,
+      'progressPercent': project.goalAmount > 0
+          ? (totalInvested / project.goalAmount * 100).clamp(0, 100)
+          : 0,
+    };
   }
 }
 
