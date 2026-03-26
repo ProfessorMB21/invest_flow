@@ -1,34 +1,42 @@
-import 'dart:async';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:investflow/core/theme/app_theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide SupabaseClient;
-import 'package:investflow/supabaase_client.dart';
-
+import 'package:investflow/features/auth/logic/auth_service.dart';
+import 'package:investflow/features/auth/logic/auth_provider_interface.dart';
+import 'package:investflow/firebase_options.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/dashboard/presentation/dashboard_shell.dart';
 
-// Auth provider
-final authProvider = StreamProvider((ref) {
-  return Supabase.instance.client.auth.onAuthStateChange;
+// Auth state provider
+final authStateProvider = Provider<AuthState>((ref) {
+  return AuthService().authState;
 });
 
-// Session provider
-final sessionProvider = Provider<Session?>((ref) {
-  final authState = ref.watch(authProvider);
-  return authState.value?.session;
+// Router provider
+late final GoRouter _router;
+
+final goRouterProvider = Provider<GoRouter>((ref) {
+  return _router;
 });
 
-// Router
-final goRouterProvider = Provider((ref) {
-  final session = ref.watch(sessionProvider);
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-  return GoRouter(
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Initialize Auth Service (this also sets up the ChangeNotifier)
+  await AuthService().initialize(useFirebase: true);
+
+  // Initialize router with AuthService as refreshListenable
+  _router = GoRouter(
     initialLocation: '/login',
-    refreshListenable: GoRouterRefreshStream(
-      Supabase.instance.client.auth.onAuthStateChange
-    ),
+    refreshListenable: AuthService(),
     routes: [
       GoRoute(
         path: '/login',
@@ -40,19 +48,34 @@ final goRouterProvider = Provider((ref) {
       ),
     ],
     redirect: (context, state) {
-      final isLoggedIn = session != null;
+      final authService = AuthService();
+      final isLoggedIn = authService.isAuthenticated;
       final isLoggingIn = state.uri.toString() == '/login';
 
-      if (!isLoggedIn && !isLoggingIn) return '/login';
-      if (isLoggedIn && isLoggingIn) return '/';
+      if (kDebugMode) {
+        print('>>> Redirect check: isLoggedIn=$isLoggedIn, location=${state.uri.toString()}');
+      }
+
+      if (!isLoggedIn && !isLoggingIn) {
+        if (kDebugMode) {
+          print('>>> Redirecting to /login');
+        }
+        return '/login';
+      }
+      if (isLoggedIn && isLoggingIn) {
+        if (kDebugMode) {
+          print('>>> Redirecting to /');
+        }
+        return '/';
+      }
       return null;
     },
   );
-});
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await SupabaseClient().init();
+  if (kDebugMode) {
+    print('***** App Initialization Complete *****');
+  }
+
   runApp(const ProviderScope(child: InvestFlowApp()));
 }
 
@@ -65,26 +88,8 @@ class InvestFlowApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'InvestFlow',
       theme: AppTheme.lightTheme,
-      themeMode: ThemeMode.system,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
     );
-  }
-}
-
-// Helper class for GoRouter Refresh
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    subscription = stream.asBroadcastStream().listen(
-        (dynamic _) => notifyListeners(),
-    );
-  }
-  late final StreamSubscription<dynamic> subscription;
-
-  @override
-  void dispose() {
-    subscription.cancel();
-    super.dispose();
   }
 }

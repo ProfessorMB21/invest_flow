@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 abstract class AuthProviderInterface {
   Future<void> initialize();
   Future<void> signIn(String email, String password);

@@ -1,6 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:investflow/features/auth/logic/auth_service.dart';
+import 'package:investflow/features/auth/logic/firebase_auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,38 +16,62 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _isLoading = false;
-  bool _obscurePassword = true;
+  // bool _obscurePassword = true;
+
+  @override @override
+  void initState() {
+    super.initState();
+    testFirestore();
+  }
 
   Future<void> _login() async {
     final currentState = _formKey.currentState;
     if (currentState == null || !currentState.validate()) return;
 
     if (_emailCtrl.text.isEmpty) {
-      _showError('Email is empty');
+      _showError('Email is required');
       return;
     }
     if (_passCtrl.text.isEmpty) {
-      _showError('Password is empty');
+      _showError('Password is required');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final response = await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text,
+      if (kDebugMode) {
+        print('>>> Attempting Firebase login...');
+      }
+      await AuthService().signIn(
+        _emailCtrl.text.trim(),
+        _passCtrl.text,
       );
-      if (response.user != null && mounted) context.go('/');
+
+      if (kDebugMode) {
+        print('>>> Login successful!');
+      }
+
+      if (mounted) context.go('/');
     } on AuthException catch (e) {
       if (!mounted) return;
       _showError(e.message);
     } catch (e) {
       if (!mounted) return;
-      _showError("An unexpected error occurred.");
+      _showError(_getErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    final errorString = error.toString();
+    if (errorString.contains('invalid-email')) return 'Invalid email address';
+    if (errorString.contains('user-not-found')) return 'No user found with this email';
+    if (errorString.contains('wrong-password')) return 'Incorrect password';
+    if (errorString.contains('invalid-credential')) return 'Invalid email or password';
+    if (errorString.contains('network-request-failed')) return 'Network error. Check your connection';
+    return 'Login failed: ${error.toString()}';
   }
 
   void _showError(String message) {
@@ -55,19 +82,6 @@ class _LoginScreenState extends State<LoginScreen> {
         behavior: SnackBarBehavior.floating,
       ),
     );
-  }
-
-  String _getAuthErrorMessage(String? message) {
-    switch (message) {
-      case 'Invalid login credentials':
-        return 'Invalid email or password';
-      case 'Email not confirmed':
-        return 'Please verify your email address';
-      case 'User already registered':
-        return 'An account with this email already exists';
-      default:
-        return message ?? 'Authentication failed';
-    }
   }
 
   @override
@@ -89,10 +103,22 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text("InvestFlow", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF0052CC))),
-                const SizedBox(height: 8),
-                const SizedBox(height: 24),
+                const Icon(
+                  Icons.trending_up,
+                  size: 80,
+                  color: Color(0xFF0052CC),
+                ),
+                const SizedBox(height: 16),
 
+                const Text(
+                    "InvestFlow",
+                    style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0052CC)
+                    )
+                ),
+                const SizedBox(height: 8),
                 const SizedBox(height: 8),
                 const Text(
                   'Sign in to manage your investments',
@@ -129,21 +155,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 //Password field
                 TextFormField(
                   controller: _passCtrl,
-                  obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     hintText: 'Enter your password',
                     prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
-                    ),
                     border: const OutlineInputBorder(),
                   ),
                   validator: (value) {
@@ -175,6 +190,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: Text(_isLoading ? 'Signing in...' : 'Sign In'),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: const Color(0xFF0052CC),
+                    foregroundColor: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -195,5 +212,15 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+}
+
+Future<void> testFirestore() async {
+  try {
+    final firestore = FirebaseFirestore.instance;
+    final snapshot = await firestore.collection('profiles').limit(1).get();
+    print('✓ Firestore connected! Collections: ${snapshot.docs.length}');
+  } catch (e) {
+    print('✗ Firestore error: $e');
   }
 }
