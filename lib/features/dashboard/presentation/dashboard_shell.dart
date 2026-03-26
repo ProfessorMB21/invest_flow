@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:investflow/features/auth/logic/auth_service.dart';
+import 'package:investflow/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -16,7 +18,7 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 
   void _logout() async {
-    await Supabase.instance.client.auth.signOut();
+    await AuthService().signOut();
     if (mounted) context.go('/login');
   }
 
@@ -30,7 +32,13 @@ class _DashboardShellState extends State<DashboardShell> {
       ? null
       : AppBar(
         title: const Text("InvestFlow"),
-        actions: [IconButton(icon: const Icon(Icons.logout), onPressed: _logout,)],
+        actions: [
+          IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () => context.push('/settings')
+          ),
+          IconButton(onPressed: _logout, icon: const Icon(Icons.logout))
+        ],
       ),
       body: Row(
         children: [
@@ -44,7 +52,7 @@ class _DashboardShellState extends State<DashboardShell> {
                 NavigationRailDestination(icon: Icon(Icons.dashboard), label: Text('Dashboard')),
                 NavigationRailDestination(icon: Icon(Icons.folder), label: Text('Projects')),
                 NavigationRailDestination(icon: Icon(Icons.chat), label: Text('Messages')),
-                NavigationRailDestination(icon: Icon(Icons.settings), label: Text('Settings')),
+                // NavigationRailDestination(icon: Icon(Icons.settings), label: Text('Settings')),
               ],
             ),
           Expanded(child: _getPage(_selectedIndex))
@@ -67,7 +75,7 @@ class _DashboardShellState extends State<DashboardShell> {
   Widget _getPage(int index) {
     switch (index) {
       case 0:
-        return const Center(child: Text("Dashboard Overview"));
+        return const DashboardScreen();
       case 1:
         return const Center(child: Text("Project List & Milestones"));
       case 2:
