@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/dashboard/presentation/dashboard_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({super.key});

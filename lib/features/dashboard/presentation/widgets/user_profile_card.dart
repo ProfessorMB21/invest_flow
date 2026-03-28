@@ -63,7 +63,7 @@ class UserProfileCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _getRoleColor(userProfile?.role).withOpacity(0.1),
+                          color: _getRoleColor(userProfile?.role).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(

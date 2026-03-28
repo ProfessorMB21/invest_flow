@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:investflow/core/models/project.dart';
-import 'package:investflow/features/auth/logic/auth_service.dart';
+//import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/dashboard/logic/dashboard_notifier.dart';
 import 'package:investflow/features/dashboard/presentation/widgets/project_card.dart';
 import 'package:investflow/features/dashboard/presentation/widgets/stats_summary.dart';
@@ -13,8 +13,8 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboardState = ref.watch(dashboardNotifierProvider);
-    final authService = AuthService();
-    final userId = authService.currentUserId;
+    //final authService = AuthService();
+    //final userId = authService.currentUserId;
 
     return RefreshIndicator(
       onRefresh: () async => ref.read(dashboardNotifierProvider.notifier).initialize(),
