@@ -57,5 +57,29 @@ class SupabaseAuthProvider implements AuthProviderInterface {
   @override
   bool get isAuthenticated => _supabase!.auth.currentUser != null;
 
+  @override
+  Future<void> createUserProfile(String userId, String email, String fullName, {String? role}) {
+    // TODO: implement createUserProfile
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getUserProfile(String userId) {
+    // TODO: implement getUserProfile
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) {
+    // TODO: implement sendPasswordResetEmail
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> updateUserProfile(String userId, Map<String, dynamic> data) {
+    // TODO: implement updateUserProfile
+    throw UnimplementedError();
+  }
+
 
 }

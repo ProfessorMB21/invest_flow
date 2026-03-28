@@ -16,6 +16,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passCtrl = TextEditingController();
   final _nameCtrl = TextEditingController(); // For sign up
 
+  // focus nodes for field navigation
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _isSignUpMode = false;
@@ -31,6 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailCtrl.dispose();
     _passCtrl.dispose();
     _nameCtrl.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
@@ -129,8 +135,35 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() {
       _isSignUpMode = !_isSignUpMode;
       _formKey.currentState?.reset();
+      FocusScope.of(context).unfocus(); // clears focus when switching nodes
     });
   }
+
+  // ========================== Enter key handlers
+  /// Called when Enter is pressed on Email field
+  void _onEmailSubmitted(String value) {
+    // Move focus to password field
+    FocusScope.of(context).requestFocus(_passwordFocusNode);
+  }
+
+  /// Called when Enter is pressed on Password field
+  void _onPasswordSubmitted(String value) {
+    // Unfocus keyboard and trigger login/signup
+    FocusScope.of(context).unfocus();
+
+    if (_isSignUpMode) {
+      _handleSignUp();
+    } else {
+      _login();
+    }
+  }
+
+  /// Called when Enter is pressed on Name field (Sign Up mode)
+  void _onNameSubmitted(String value) {
+    // Move focus to email field
+    FocusScope.of(context).requestFocus(_emailFocusNode);
+  }
+
 
   // ========================== UI
   @override
@@ -166,6 +199,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     if (_isSignUpMode) ...[
                       TextFormField(
                         controller: _nameCtrl,
+                        focusNode: _isSignUpMode ? null : null,
+                        textInputAction: TextInputAction.next,
+                        onFieldSubmitted: _onNameSubmitted,
                         decoration: const InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.person_outline), border: OutlineInputBorder()),
                         validator: (value) => value == null || value.isEmpty ? 'Please enter your name' : null,
                       ),
@@ -174,6 +210,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     TextFormField(
                       controller: _emailCtrl,
+                      focusNode: _isSignUpMode ? null : null,
+                      textInputAction: TextInputAction.next,
+                      onFieldSubmitted: _onNameSubmitted,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.email_outlined), border: OutlineInputBorder()),
                       validator: (value) => value == null || value.isEmpty || !value.contains('@') ? 'Please enter a valid email' : null,
@@ -182,6 +221,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     TextFormField(
                       controller: _passCtrl,
+                      focusNode: _passwordFocusNode,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: _onPasswordSubmitted,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         labelText: 'Password',

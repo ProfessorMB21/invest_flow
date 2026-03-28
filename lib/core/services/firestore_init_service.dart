@@ -1,4 +1,3 @@
-import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -45,13 +44,17 @@ Future<bool> isInitialized() async {
     await _documentIndexes();
     await _markAsInitialized();
   } catch (e) {
-    print("Firestore init failed");
+    if (kDebugMode) {
+      print("Firestore init failed");
+    }
   }
   }
 
   // Create all collections
   Future<void> _createCollections() async {
-    print('📁 Creating collections...');
+    if (kDebugMode) {
+      print('📁 Creating collections...');
+    }
 
     final collections = [
       profiles,
@@ -70,7 +73,9 @@ Future<bool> isInitialized() async {
         'purpose': 'Collection initialization marker',
       });
       await tempRef.delete(); // Remove the temp document
-      print('  ✓ Collection "$collection" created');
+      if (kDebugMode) {
+        print('  ✓ Collection "$collection" created');
+      }
     }
   }
 
@@ -121,7 +126,9 @@ Future<bool> isInitialized() async {
       'created_at': FieldValue.serverTimestamp(),
     });
 
-    print('  ✓ Index requirements documented');
+    if (kDebugMode) {
+      print('  ✓ Index requirements documented');
+    }
   }
 
   // Mark Firestore as initialized
@@ -138,7 +145,9 @@ Future<bool> isInitialized() async {
         messages,
       ],
     });
-    print('  ✓ Marked as initialized');
+    if (kDebugMode) {
+      print('  ✓ Marked as initialized');
+    }
   }
 
   // Optional: Add sample projects for testing
