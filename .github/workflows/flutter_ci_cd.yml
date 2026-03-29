@@ -99,7 +99,8 @@ jobs:
             "build/windows/runner/Release",
             "build/windows/x64/Release",
             "build/windows/runner/Release/runner",
-            "build/windows/flutter/Release"
+            "build/windows/flutter/Release",
+            "build/windows/x64/runner/Release"
           )
           $foundPath = ""
           foreach ($path in $potentialPaths) {
