@@ -80,7 +80,8 @@ jobs:
             "build/windows/runner/Release",
             "build/windows/x64/Release",
             "build/windows/runner/Release/runner",
-            "build/windows/flutter/Release"
+            "build/windows/flutter/Release",
+            "build/windows/x64/runner/Release"
           )
           foreach ($path in $releasePaths) {
             if (Test-Path $path) {
@@ -105,8 +106,8 @@ jobs:
           $foundPath = ""
           foreach ($path in $potentialPaths) {
             if (Test-Path $path) {
-              Write-Host "Found build output at: $path"
-              Write-Host "::set-output name=output_path::$path"
+              # --- Write-Host "Found build output at: $path"
+              # --- Write-Host "::set-output name=output_path::$path"
               $foundPath = $path
               break
             }
