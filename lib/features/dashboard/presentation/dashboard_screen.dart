@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:investflow/core/models/project.dart';
 //import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/dashboard/logic/dashboard_notifier.dart';
@@ -116,13 +117,13 @@ class DashboardScreen extends ConsumerWidget {
               icon: Icons.add_circle_outline,
               label: 'New Project',
               color: Colors.blue,
-              onTap: () => _showCreateProjectDialog(context, ref),
+              onTap: () => context.push('/projects/create'),
             ),
             _buildQuickAction(
               icon: Icons.search_outlined,
               label: 'Browse',
               color: Colors.green,
-              onTap: () {},
+              onTap: () => context.push('/projects'),
             ),
             _buildQuickAction(
               icon: Icons.chat_outlined,
