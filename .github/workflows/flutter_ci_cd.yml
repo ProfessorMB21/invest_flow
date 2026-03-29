@@ -70,59 +70,19 @@ jobs:
         run: flutter build windows --release
 
       - name: Verify Build Output
-        run: |
-          Write-Host "==Checking build directory structure=="
-          if (Test-Path "build/windows") {
-            Get-ChildItem "build/windows" -Recurse -Directory | Select-Object FullName
-          }
-          Write-Host "== Looking for Release folder =="
-          $releasePaths = @(
-            "build/windows/runner/Release",
-            "build/windows/x64/Release",
-            "build/windows/runner/Release/runner",
-            "build/windows/flutter/Release",
-            "build/windows/x64/runner/Release"
-          )
-          foreach ($path in $releasePaths) {
-            if (Test-Path $path) {
-              Write-Host "Found potential release directory: $path"
-              Get-ChildItem -Path $path | Select-Object FullName
-            } else {
-              Write-Host "Directory not found: $path"
-            }
-          }
-      
-      - name: Find Windows Build Output
-        id: find_output
         shell: pwsh
+        id: verify_build
         run: |
-          $potentialPaths = @(
-            "build/windows/runner/Release",
-            "build/windows/x64/Release",
-            "build/windows/runner/Release/runner",
-            "build/windows/flutter/Release",
-            "build/windows/x64/runner/Release"
-          )
-          $foundPath = ""
-          foreach ($path in $potentialPaths) {
-            if (Test-Path $path) {
-              # --- Write-Host "Found build output at: $path"
-              # --- Write-Host "::set-output name=output_path::$path"
-              $foundPath = $path
-              break
-            }
+          $buildPath = "build/windows/x64/runner/Release"
+          
+          if (Test-Path $buildPath) {
+            Write-Host "Found build path: $buildPath"
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "build_path=$buildPath"
           }
-          if ($foundPath -eq "") {
-            $exeFile = Get-ChildItem -Path "build" -Filter "*.exe" -Recurse | Select-Object -First 1
-            if ($exeFile) {
-              $foundPath = $exeFile.DirectoryName}
-          }
-          Write-Host "Build output path: $foundPath"
-          echo " build_path=$foundPath" >> $GITHUB_OUTPUT
 
       - name: Create Versioned Zip
         shell: pwsh
-        if: ${{ steps.find_output.outputs.build_path != '' }}
+        if: success()
         run: |
           $version = "${{ env.APP_VERSION }}"
           $zipName = "flutter-windows-v$version.zip"
@@ -140,7 +100,7 @@ jobs:
       
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
-        if : ${{ steps.find_output.outputs.build_path != '' }}
+        if : success()
         with:
           name: windows-exe-v${{ env.APP_VERSION }}
           path: flutter-windows-v${{ env.APP_VERSION }}.zip
