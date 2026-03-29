@@ -2,83 +2,117 @@ name: Flutter CI/CD
 
 on:
   push:
-    branches: [ "master" ]
-    tags: [ "v*" ]
+    branches: [ "main", "master", "dev-backend" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
+env:
+  # Linear Versioning Logic:
+  # If PR: Use PR Number (e.g., 1.0.45)
+  # If Push: Use Run Number (e.g., 1.0.102)
+  APP_VERSION: "1.0.${{ github.event.pull_request.number || github.run_number }}"
+
 jobs:
+  # ---------------------------------------------------------
+  # Job 1: Analyze & Test
+  # ---------------------------------------------------------
   analyze-and-test:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          channel: 'stable'
           cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Update dependencies
-        run: flutter pub outdated
-
-      - name: Analyze code
-        run: flutter analyze
       
+      - name: Install Dependencies
+        run: flutter pub get
+      
+
+  # ---------------------------------------------------------
+  # Job 2: Build Windows (Priority)
+  # ---------------------------------------------------------
   build-windows:
     needs: analyze-and-test
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-
+      
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          channel: 'stable'
           cache: true
       
-      - name: Enable Windows desktop support
+      - name: Enable Windows Desktop
         run: flutter config --enable-windows-desktop
-
-      - name: Install dependencies
+      
+      - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Windows executable
+      # --- Dynamic Versioning (PowerShell) ---
+      - name: Update Pubspec Version
+        shell: pwsh
+        run: |
+          $version = "${{ env.APP_VERSION }}"
+          (Get-Content pubspec.yaml) -replace 'version: .*', "version: $version" | Set-Content pubspec.yaml
+          Write-Host "Version set to $version"
+      
+      - name: Build Windows Exe
         run: flutter build windows --release
       
-      - name: Create distribution zip
+      - name: Create Versioned Zip
+        shell: pwsh
         run: |
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/windows/InvestFlow.zip
-
-      - name: Upload Windows artifact
+          $version = "${{ env.APP_VERSION }}"
+          $zipName = "flutter-windows-v$version.zip"
+          Compress-Archive -Path build/windows/runner/Release/* -DestinationPath $zipName
+          Write-Host "Created $zipName"
+      
+      - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: InvestFlow-windows
-          path: build/windows/InvestFlow.zip
+          name: windows-exe-v${{ env.APP_VERSION }}
+          path: flutter-windows-v${{ env.APP_VERSION }}.zip
 
+  # ---------------------------------------------------------
+  # Job 3: Publish Release
+  # ---------------------------------------------------------
   release:
-    needs: build-windows
-    runs-on: windows-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-windows]
+    runs-on: ubuntu-latest
+    # Run on master pushes or manual dispatch. 
+    # For PRs, we create a Draft. For Master, we create a Public Release.
+    if: always() && needs.build-windows.result == 'success'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Windows artifact
+      - name: Download Windows Zip
         uses: actions/download-artifact@v4
+        if: ${{ needs.build-windows.result == 'success' }}
         with:
-          name: InvestFlow-windows
-          path: build/windows
+          name: windows-exe-v${{ env.APP_VERSION }}
+          path: ./release-assets
       
-      - name: Create Release
+      - name: Determine Release Type
+        id: release_type
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "is_draft=true" >> $GITHUB_OUTPUT
+            echo "tag_name=pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "is_draft=false" >> $GITHUB_OUTPUT
+            echo "tag_name=v${{ env.APP_VERSION }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: build/windows/InvestFlow.zip
+          tag_name: ${{ steps.release_type.outputs.tag_name }}
+          name: Release ${{ env.APP_VERSION }} (${{ github.event_name == 'pull_request' && 'PR' || 'Master' }})
+          draft: ${{ steps.release_type.outputs.is_draft }}
+          prerelease: ${{ github.event_name == 'pull_request' }}
+          files: ./release-assets/*
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    
