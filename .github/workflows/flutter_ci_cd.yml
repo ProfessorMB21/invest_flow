@@ -86,7 +86,7 @@ jobs:
         run: |
           $version = "${{ env.APP_VERSION }}"
           $zipName = "flutter-windows-v$version.zip"
-          $buildPath = "${{ steps.find_output.outputs.build_path }}"
+          $buildPath = "${{ steps.verify_build.outputs.build_path }}"
 
           Write-Host "Zipping from: $buildPath"
           Compress-Archive -Path "$buildPath\*" -DestinationPath $zipName -Force
@@ -94,8 +94,8 @@ jobs:
 
           # Verify zip was created
           if (Test-Path $zipName) {
-            $size = (Get-Item $zipName).Length / 1MB
-            Write-Host "Zip file size: $([math]::Round($size, 2)) MB"
+            $size = [math]::Round((Get-Item $zipName).Length / 1MB, 2)
+            Write-Host "Zip file: $zipName ($size MB)"
           }
       
       - name: Upload Windows Artifact
