@@ -57,7 +57,15 @@ jobs:
           $version = "${{ env.APP_VERSION }}"
           (Get-Content pubspec.yaml) -replace 'version: .*', "version: $version" | Set-Content pubspec.yaml
           Write-Host "Version set to $version"
-      
+
+      - name: Decode Firebase Options
+        shell: pwsh
+        run: |
+          $content = "${{ secrets.FIREBASE_OPTIONS_BASE64 }}"
+          $bytes = [Convert]::FromBase64String($content)
+          [IO.File]::WriteAllBytes("lib/firebase_options.dart", $bytes)
+          Write-Host "Firebase options decoded successfully"
+
       - name: Build Windows Exe
         run: flutter build windows --release
       
