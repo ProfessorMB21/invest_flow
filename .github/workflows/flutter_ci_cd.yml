@@ -1,5 +1,10 @@
 name: Flutter CI/CD
 
+permissions:
+  contents: write
+  actions: read
+  packages: read
+
 on:
   push:
     branches: [ "main", "master", "dev-backend" ]
