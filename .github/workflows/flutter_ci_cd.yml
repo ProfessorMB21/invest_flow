@@ -7,16 +7,21 @@ permissions:
 
 on:
   push:
-    branches: [ "main", "master", "dev-backend" ]
+    branches: [ "master"]
+    tags: ["v*"]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "master" ]
   workflow_dispatch:
+    inputs:
+      bump_major:
+        description: 'Bump major version'
+        required: false
+        type: boolean
+        default: false
 
 env:
-  # Linear Versioning Logic:
-  # If PR: Use PR Number (e.g., 1.0.45)
-  # If Push: Use Run Number (e.g., 1.0.102)
-  APP_VERSION: "1.0.${{ github.event.pull_request.number || github.run_number }}"
+  # APP_VERSION: "1.0.${{ github.event.pull_request.number || github.run_number }}"
+  BASE_VERSION_FILE: "pubspec.yaml"
 
 jobs:
   # ---------------------------------------------------------
@@ -33,13 +38,86 @@ jobs:
       
       - name: Install Dependencies
         run: flutter pub get
-      
 
   # ---------------------------------------------------------
-  # Job 2: Build Windows (Priority)
+  # Job 2: Analyze & Test
+  # ---------------------------------------------------------
+  calculate-version:
+    runs-on: ubuntu-latest
+    outputs:
+      full_version: ${{ steps.calc.outputs.full_version }}
+      version_tag: ${{ steps.calc.outputs.version_tag }}
+      is_manual_tag: ${{ steps.calc.outputs.is_mamual_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate Version
+        id: calc
+        run: |
+          # Check if this is a manual tag release
+          if [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
+            echo "full_version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "version_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "is_manual_tag=true >> $GITHUB_OUTPUT
+            echo "Manual tag release: $"{{ github.ref_name }}"
+            exit 0
+          fi
+          
+          # Read base version from pubspec.yaml (e.g., "1.0.0")
+          BASE=$(grep "^version:" ${{ env.BASE_VERSION_FILE }} | head -1 | cut -d' ' -f2 | cut -d'+' -f1 | cut -d'-' -f1)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE"
+          
+          # Count total commits (for PATCH number)
+          TOTAL_COMMITS=$(git rev-list --count HEAD)
+          
+          # Determine version bump logic
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # PR: Keep version same as base (will update on merge)
+            NEW_MAJOR=$MAJOR
+            NEW_MINOR=$MINOR
+            NEW_PATCH=$TOTAL_COMMITS
+            echo "📋 PR build (version unchanged until merge)"
+          
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger
+            if [[ "${{ github.event.inputs.bump_major }}" == "true" ]]; then
+              NEW_MAJOR=$((MAJOR + 1))
+              NEW_MINOR=0
+              NEW_PATCH=$TOTAL_COMMITS
+            else
+              NEW_MAJOR=$MAJOR
+              NEW_MINOR=$((MINOR + 1))
+              NEW_PATCH=$TOTAL_COMMITS
+            fi
+            echo "🚀 Manual trigger release"
+          
+          else
+            # Push to master: Bump MINOR, PATCH = commit count
+            NEW_MAJOR=$MAJOR
+            NEW_MINOR=$((MINOR + 1))
+            NEW_PATCH=$TOTAL_COMMITS
+            echo "🔀 Master push: Minor bump"
+          fi
+          
+          FULL_VERSION="${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
+          VERSION_TAG="v${FULL_VERSION}"
+          
+          echo "full_version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "is_manual_tag=false" >> $GITHUB_OUTPUT
+          
+          echo "✨ Version: $VERSION_TAG"
+          echo "   Commits: $TOTAL_COMMITS"
+          echo "   Base: $BASE → New: $FULL_VERSION"
+
+
+  # ---------------------------------------------------------
+  # Job 3: Build Windows
   # ---------------------------------------------------------
   build-windows:
-    needs: analyze-and-test
+    needs: [calculate-version, analyze-and-test]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,9 +137,11 @@ jobs:
       - name: Update Pubspec Version
         shell: pwsh
         run: |
-          $version = "${{ env.APP_VERSION }}"
-          (Get-Content pubspec.yaml) -replace 'version: .*', "version: $version" | Set-Content pubspec.yaml
-          Write-Host "Version set to $version"
+          $VERSION = "${{ needs.calculate-version.outputs.full_version }}"
+          $content = Get-Content pubspec.yaml
+          $content = $content -replace '^version: .*', "version: $VERSION"
+          $content | Set-Content pubspec.yaml
+          Write-Host "✅ Version: $VERSION"
 
       - name: Decode Firebase Options
         shell: pwsh
@@ -79,7 +159,6 @@ jobs:
         id: verify_build
         run: |
           $buildPath = "build/windows/x64/runner/Release"
-          
           if (Test-Path $buildPath) {
             Write-Host "Found build path: $buildPath"
             Add-Content -Path $env:GITHUB_OUTPUT -Value "build_path=$buildPath"
@@ -89,13 +168,12 @@ jobs:
         shell: pwsh
         if: success()
         run: |
-          $version = "${{ env.APP_VERSION }}"
-          $zipName = "flutter-windows-v$version.zip"
+          $VERSION = "${{ needs.calculate-version.outputs.full_version }}"
+          $zipName = "InvestFlow-windows-v$VERSION.zip"
           $buildPath = "${{ steps.verify_build.outputs.build_path }}"
-
-          Write-Host "Zipping from: $buildPath"
+          
           Compress-Archive -Path "$buildPath\*" -DestinationPath $zipName -Force
-          Write-Host "Created $zipName"
+          Write-Host "✅ Created: $zipName"
 
           # Verify zip was created
           if (Test-Path $zipName) {
@@ -107,18 +185,17 @@ jobs:
         uses: actions/upload-artifact@v4
         if : success()
         with:
-          name: windows-exe-v${{ env.APP_VERSION }}
-          path: flutter-windows-v${{ env.APP_VERSION }}.zip
+          name: windows-exe-v${{ needs.calculate-version.outputs.full_version }}
+          path: InvestFlow-windows-v${{ needs.calculate-version.outputs.full_version }}.zip
+          retention-days: 5
 
   # ---------------------------------------------------------
-  # Job 3: Publish Release
+  # Job 4: Publish Release
   # ---------------------------------------------------------
   release:
-    needs: [build-windows]
+    needs: [calculate-version, build-windows]
     runs-on: ubuntu-latest
-    # Run on master pushes or manual dispatch. 
-    # For PRs, we create a Draft. For Master, we create a Public Release.
-    if: always() && needs.build-windows.result == 'success'
+    if: always() && needs.calculate-version.outputs.is_manual_tag != 'true'
     steps:
       - uses: actions/checkout@v4
 
@@ -126,7 +203,7 @@ jobs:
         uses: actions/download-artifact@v4
         if: ${{ needs.build-windows.result == 'success' }}
         with:
-          name: windows-exe-v${{ env.APP_VERSION }}
+          name: windows-exe-v${{ needs.calculate-version.outputs.full_version }}
           path: ./release-assets
       
       - name: Determine Release Type
@@ -134,19 +211,19 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "is_draft=true" >> $GITHUB_OUTPUT
-            echo "tag_name=pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+            echo "prerelease=true" >> $GITHUB_OUTPUT
           else
             echo "is_draft=false" >> $GITHUB_OUTPUT
-            echo "tag_name=v${{ env.APP_VERSION }}" >> $GITHUB_OUTPUT
+            echo "prerelease=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.release_type.outputs.tag_name }}
-          name: Release ${{ env.APP_VERSION }} (${{ github.event_name == 'pull_request' && 'PR' || 'Master' }})
+          tag_name: ${{ needs.calculate-version.outputs.full_version }}
+          name: Release v${{ needs.calculate-version.outputs.full_version }}
           draft: ${{ steps.release_type.outputs.is_draft }}
-          prerelease: ${{ github.event_name == 'pull_request' }}
+          prerelease: ${{ steps.release_type.outputs.prerelease }}
           files: ./release-assets/*
           generate_release_notes: true
         env:
