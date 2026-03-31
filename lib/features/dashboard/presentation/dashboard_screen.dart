@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:investflow/core/models/project.dart';
 //import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/dashboard/logic/dashboard_notifier.dart';
@@ -116,13 +117,13 @@ class DashboardScreen extends ConsumerWidget {
               icon: Icons.add_circle_outline,
               label: 'New Project',
               color: Colors.blue,
-              onTap: () => _showCreateProjectDialog(context, ref),
+              onTap: () => context.push('/projects/create'),
             ),
             _buildQuickAction(
               icon: Icons.search_outlined,
               label: 'Browse',
               color: Colors.green,
-              onTap: () {},
+              onTap: () => context.push('/projects'),
             ),
             _buildQuickAction(
               icon: Icons.chat_outlined,
@@ -220,100 +221,6 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   // ==================== DIALOGS & NAVIGATION ====================
-
-  void _showCreateProjectDialog(BuildContext context, WidgetRef ref) {
-    final titleCtrl = TextEditingController();
-    final descCtrl = TextEditingController();
-    final goalCtrl = TextEditingController();
-    DateTime? selectedDeadline;
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const Text('Create New Project'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleCtrl,
-                  decoration: const InputDecoration(labelText: 'Project Title', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: descCtrl,
-                  decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: goalCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Goal Amount (\$)', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 12),
-                ListTile(
-                  title: Text(selectedDeadline != null
-                      ? 'Deadline: ${selectedDeadline!.toLocal()}'
-                      : 'Select Deadline'),
-                  trailing: const Icon(Icons.calendar_today),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now().add(const Duration(days: 30)),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (date != null) {
-                      setState(() => selectedDeadline = date);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            FilledButton(
-              onPressed: () async {
-                if (titleCtrl.text.isEmpty || goalCtrl.text.isEmpty || selectedDeadline == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please fill all fields')),
-                  );
-                  return;
-                }
-
-                Navigator.pop(context);
-
-                try {
-                  await ref.read(dashboardNotifierProvider.notifier).createProject(
-                    title: titleCtrl.text,
-                    description: descCtrl.text,
-                    goalAmount: double.tryParse(goalCtrl.text) ?? 0,
-                    deadline: selectedDeadline!,
-                  );
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Project created successfully!')),
-                    );
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Failed to create project: $e')),
-                    );
-                  }
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _showEditProfileDialog(BuildContext context, WidgetRef ref) {
     // Implement profile editing

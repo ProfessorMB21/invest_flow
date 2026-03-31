@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:investflow/features/projects/presentation/projects_screen.dart';
 
 class DashboardShell extends StatefulWidget {
   const DashboardShell({super.key});
@@ -76,7 +77,7 @@ class _DashboardShellState extends State<DashboardShell> {
       case 0:
         return const DashboardScreen();
       case 1:
-        return const Center(child: Text("Project List & Milestones"));
+        return const ProjectsScreen();
       case 2:
         return const Center(child: Text("FlowMessenger"));
       default:

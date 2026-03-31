@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +8,9 @@ import 'package:investflow/core/services/firestore_init_service.dart';
 import 'package:investflow/core/theme/app_theme.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/auth/logic/auth_provider_interface.dart';
+import 'package:investflow/features/projects/presentation/create_project_screen.dart';
+import 'package:investflow/features/projects/presentation/project_detail_screen.dart';
+import 'package:investflow/features/projects/presentation/projects_screen.dart';
 import 'package:investflow/firebase_options.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/dashboard/presentation/dashboard_shell.dart';
@@ -60,6 +61,22 @@ void main() async {
         path: '/',
         builder: (context, state) => const DashboardShell(),
       ),
+      GoRoute(
+        path: '/projects',
+        builder: (context, state) => const ProjectsScreen(),
+      ),
+      GoRoute(
+        path: '/projects/create',
+        builder: (context, state) => const CreateProjectScreen(),
+      ),
+      GoRoute(
+        path: '/projects/:projectId',
+        builder: (context, state) {
+          final projectId = state.pathParameters['projectId']!;
+          return ProjectDetailScreen(projectId: projectId);
+        }
+      ),
+      // settings screen coming soon
     ],
     redirect: (context, state) {
       final authService = AuthService();
