@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:investflow/core/services/update_checker.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -28,7 +29,8 @@ class _LoginScreenState extends State<LoginScreen> {
   @override @override
   void initState() {
     super.initState();
-    testFirestore();
+    //testFirestore();
+    _checkForUpdates(context);
   }
 
   @override
@@ -40,6 +42,16 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordFocusNode.dispose();
     _nameFocusNode.dispose();
     super.dispose();
+  }
+
+  // ======================== Updater
+  void _checkForUpdates(BuildContext context) async {
+    final update = await UpdateChecker.checkForUpdate();
+    if (update != null && context.mounted) {
+      await UpdateChecker.promptAndInstall(context, update);
+    } else if (context.mounted) {
+      UpdateChecker.showErrorSnackBar(context, 'You are on the latest version.');
+    }
   }
 
   // ========================= Login/Sign In
