@@ -118,29 +118,78 @@ class UpdateChecker {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Downloading update...'),
+          ],
+        ),
+      ),
     );
 
     try {
       final tempDir = await getTemporaryDirectory();
-      final fileName = url.split('/').last;
-      final filePath = '${tempDir.path}/$fileName';
+      final zipName = url.split('/').last;
+      final zipPath = '${tempDir.path}/$zipName';
+      final extractDir = '${tempDir.path}/investflow_update';
 
+      // 1. Download ZIP
       final response = await http.Client().get(Uri.parse(url));
       if (response.statusCode != 200) throw Exception('Download failed (HTTP ${response.statusCode})');
+      await File(zipPath).writeAsBytes(response.bodyBytes);
 
-      await File(filePath).writeAsBytes(response.bodyBytes);
+      // 2. Extract ZIP
+      if (context.mounted) {
+        (context as Element).reassemble(); // Force UI rebuild to show next step if needed
+      }
+      extractFileToDisk(zipPath, extractDir);
+
+      // 3. Prepare paths
+      final currentExe = Platform.resolvedExecutable;
+      final appDir = File(currentExe).parent.path;
+      final updaterBat = '${tempDir.path}/apply_update.bat';
+
+      // 4. Generate self-cleaning batch script
+      final batContent = '''
+@echo off
+setlocal
+set "APP_DIR=$appDir"
+set "APP_EXE=$currentExe"
+set "SOURCE_DIR=$extractDir"
+
+timeout /t 2 /nobreak > nul
+
+:: Wait until main process fully exits
+:wait
+tasklist /FI "IMAGENAME eq ${currentExe.split('\\').last}" 2>nul | find /I "${currentExe.split('\\').last}" >nul
+if not errorlevel 1 (
+    timeout /t 1 >nul
+    goto wait
+)
+
+:: Copy new files (overwrite existing)
+xcopy "%SOURCE_DIR%\*" "%APP_DIR%\" /E /Y /I /Q /R > nul
+
+:: Restart app
+start "" "%APP_EXE%"
+
+:: Cleanup
+rmdir /s /q "%SOURCE_DIR%"
+del "%~f0"
+endlocal
+exit
+''';
+      await File(updaterBat).writeAsString(batContent);
 
       if (context.mounted) Navigator.pop(context); // Close progress dialog
 
-      // Launch installer & close current app
-      if (Platform.isWindows) {
-        // runInShell: true ensures Windows handles the .exe/.msi correctly
-        await Process.start(filePath, [], runInShell: true);
-        // Brief delay to let the OS spawn the installer process
-        await Future.delayed(const Duration(milliseconds: 800));
-        exit(0);
-      }
+      // 5. Launch updater & exit current app
+      await Process.run('cmd', ['/c', 'start', '/b', '', updaterBat], runInShell: true);
+      exit(0);
+
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context);
