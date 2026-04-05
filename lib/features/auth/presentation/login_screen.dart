@@ -2,7 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:investflow/core/services/update_checker.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,10 +27,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isSignUpMode = false;
 
+  String _appVersion = '';
+  bool _isCheckingUpdate = false;
+
   @override @override
   void initState() {
     super.initState();
-    testFirestore();
+    _initializeScreen();
   }
 
   @override
@@ -40,6 +45,22 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordFocusNode.dispose();
     _nameFocusNode.dispose();
     super.dispose();
+  }
+
+  // ======================== Application version updater
+  Future<void> _initializeScreen() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() => _appVersion = 'v${packageInfo.version}');
+
+    setState(() => _isCheckingUpdate = true);
+    final update = await UpdateChecker.checkForUpdate();
+    if (!mounted) return;
+    setState(() => _isCheckingUpdate = false);
+
+    if (update != null) {
+      await UpdateChecker.promptAndInstall(context, update);
+    }
   }
 
   // ========================= Login/Sign In
@@ -171,158 +192,181 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Icon(
-                        Icons.trending_up,
-                        size: 80,
-                        color: Color(0xFF0052CC)
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _isSignUpMode
-                          ? 'Create Account'
-                          : 'InvestFlow',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0052CC)
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _isSignUpMode
-                          ? 'Sign up to start investing'
-                          : 'Sign in to manage your investments',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 48),
-
-                    if (_isSignUpMode) ...[
-                      TextFormField(
-                        controller: _nameCtrl,
-                        focusNode: _nameFocusNode,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: _onNameSubmitted,
-                        decoration: const InputDecoration(
-                            labelText: 'Full Name',
-                            prefixIcon: Icon(Icons.person_outline),
-                            border: OutlineInputBorder()
-                        ),
-                        validator: (value) => value == null || value.isEmpty
-                            ? 'Please enter your name'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    TextFormField(
-                      controller: _emailCtrl,
-                      focusNode: _emailFocusNode,
-                      textInputAction: TextInputAction.next,
-                      onFieldSubmitted: _onEmailSubmitted,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                          labelText: 'Email',
-                          hintText: 'you@example.com',
-                          prefixIcon: Icon(Icons.email_outlined),
-                          border: OutlineInputBorder()
-                      ),
-                      validator: (value) => value == null || value.isEmpty || !value.contains('@')
-                          ? 'Please enter a valid email'
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _passCtrl,
-                      focusNode: _passwordFocusNode,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: _onPasswordSubmitted,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        hintText: _isSignUpMode
-                            ? 'Min 6 characters'
-                            : 'Enter your password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                        border: const OutlineInputBorder(),
-                      ),
-                      validator: (value) => value == null || value.isEmpty || (_isSignUpMode && value.length < 6)
-                          ? 'Password must be at least 6 characters'
-                          : null,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Main action button
-                    FilledButton.icon(
-                      onPressed: _isLoading
-                          ? null
-                          : (_isSignUpMode ? _handleSignUp : _login),
-                      icon: _isLoading
-                          ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white
-                          ))
-                          : Icon(_isSignUpMode ? Icons.person_add : Icons.login),
-                      label: Text(
-                          _isLoading
-                              ? (_isSignUpMode ? 'Creating account...' : 'Signing in...')
-                              : (_isSignUpMode ? 'Create Account' : 'Sign In')
-                      ),
-                      style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: const Color(0xFF0052CC),
-                          foregroundColor: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextButton(
-                        onPressed: _isLoading
-                            ? null
-                            : _toggleMode,
-                        child: Text(
-                            _isSignUpMode
-                                ? 'Already have an account? Sign in'
-                                : "Don't have an account? Sign up"
-                        )
-                    ),
-
-                    if (!_isSignUpMode)
-                      TextButton(
-                          onPressed: () => _showForgotPasswordDialog(),
-                          child: const Text('Forgot password?')
-                      ),
-                  ],
+      body: Stack(
+        children: [
+          Positioned(
+            top: 12,
+            left: 12,
+            child: AnimatedOpacity(
+              opacity: _appVersion.isEmpty ? 0.0 : 1.0,
+              duration: const Duration(microseconds: 300),
+              child: Text(
+                'ver. $_appVersion',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 0.5
                 ),
               ),
             ),
           ),
-        ),
-      ),
+
+          // Login UI
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Icon(
+                            Icons.trending_up,
+                            size: 80,
+                            color: Color(0xFF0052CC)
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _isSignUpMode
+                              ? 'Create Account'
+                              : 'InvestFlow',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF0052CC)
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _isSignUpMode
+                              ? 'Sign up to start investing'
+                              : 'Sign in to manage your investments',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 48),
+
+                        if (_isSignUpMode) ...[
+                          TextFormField(
+                            controller: _nameCtrl,
+                            focusNode: _nameFocusNode,
+                            textInputAction: TextInputAction.next,
+                            onFieldSubmitted: _onNameSubmitted,
+                            decoration: const InputDecoration(
+                                labelText: 'Full Name',
+                                prefixIcon: Icon(Icons.person_outline),
+                                border: OutlineInputBorder()
+                            ),
+                            validator: (value) => value == null || value.isEmpty
+                                ? 'Please enter your name'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        TextFormField(
+                          controller: _emailCtrl,
+                          focusNode: _emailFocusNode,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: _onEmailSubmitted,
+                          keyboardType: TextInputType.emailAddress,
+                          decoration: const InputDecoration(
+                              labelText: 'Email',
+                              hintText: 'you@example.com',
+                              prefixIcon: Icon(Icons.email_outlined),
+                              border: OutlineInputBorder()
+                          ),
+                          validator: (value) => value == null || value.isEmpty || !value.contains('@')
+                              ? 'Please enter a valid email'
+                              : null,
+                        ),
+                        const SizedBox(height: 16),
+
+                        TextFormField(
+                          controller: _passCtrl,
+                          focusNode: _passwordFocusNode,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: _onPasswordSubmitted,
+                          obscureText: _obscurePassword,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            hintText: _isSignUpMode
+                                ? 'Min 6 characters'
+                                : 'Enter your password',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_outlined
+                                      : Icons.visibility_off_outlined
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                            border: const OutlineInputBorder(),
+                          ),
+                          validator: (value) => value == null || value.isEmpty || (_isSignUpMode && value.length < 6)
+                              ? 'Password must be at least 6 characters'
+                              : null,
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Main action button
+                        FilledButton.icon(
+                          onPressed: _isLoading
+                              ? null
+                              : (_isSignUpMode ? _handleSignUp : _login),
+                          icon: _isLoading
+                              ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white
+                              ))
+                              : Icon(_isSignUpMode ? Icons.person_add : Icons.login),
+                          label: Text(
+                              _isLoading
+                                  ? (_isSignUpMode ? 'Creating account...' : 'Signing in...')
+                                  : (_isSignUpMode ? 'Create Account' : 'Sign In')
+                          ),
+                          style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              backgroundColor: const Color(0xFF0052CC),
+                              foregroundColor: Colors.white),
+                        ),
+                        const SizedBox(height: 16),
+
+                        TextButton(
+                            onPressed: _isLoading
+                                ? null
+                                : _toggleMode,
+                            child: Text(
+                                _isSignUpMode
+                                    ? 'Already have an account? Sign in'
+                                    : "Don't have an account? Sign up"
+                            )
+                        ),
+
+                        if (!_isSignUpMode)
+                          TextButton(
+                              onPressed: () => _showForgotPasswordDialog(),
+                              child: const Text('Forgot password?')
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      )
     );
   }
 
