@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -51,9 +52,7 @@ class UpdateChecker {
         );
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Update check failed: $e');
-      }
+      throw Exception('Update check failed: $e');
     }
     return null;
   }
@@ -69,11 +68,8 @@ class UpdateChecker {
     
     for (final asset in assets) {
       final name = asset['name']?.toString().toLowerCase() ?? '';
-      
-      // Look for windows installer or portable executable
-      if (name.endsWith('.exe') || name.endsWith('.msi')) {
-        return asset['browser_download_url'] as String?;
-      }
+      final url = asset['browser_download_url'] as String?;
+      if (name.endsWith('.zip') && url != null) return url;
     }
     return null;
   }
@@ -85,10 +81,15 @@ class UpdateChecker {
       return;
     }
 
+    // Update dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('🔄 Update Available'),
+        title: const Row(children: [
+          Icon(Icons.system_update, color: Colors.blue),
+          SizedBox(width: 8),
+          Text('Update Available')
+        ]),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,37 +105,49 @@ class UpdateChecker {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Later')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Update Now')),
+          ElevatedButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.download),
+              label: const Text('Update Now')
+          ),
         ],
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && context.mounted) {
       await _downloadAndInstall(context, release.downloadUrl!);
     }
   }
 
   static Future<void> _downloadAndInstall(BuildContext context, String url) async {
+    BuildContext? dialogContext;
+
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Downloading update...'),
-          ],
-        ),
-      ),
+      builder: (ctx) {
+        dialogContext = ctx;
+        return const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Downloading & extracting update....')
+            ]
+          )
+        );
+      }
     );
+
+    String? zipPath;
+    String? extractDir;
 
     try {
       final tempDir = await getTemporaryDirectory();
       final zipName = url.split('/').last;
-      final zipPath = '${tempDir.path}/$zipName';
-      final extractDir = '${tempDir.path}/investflow_update';
+      zipPath = '${tempDir.path}/$zipName';
+      extractDir = '${tempDir.path}/investflow_update_${DateTime.now().millisecondsSinceEpoch}';
 
       // 1. Download ZIP
       final response = await http.Client().get(Uri.parse(url));
@@ -142,60 +155,102 @@ class UpdateChecker {
       await File(zipPath).writeAsBytes(response.bodyBytes);
 
       // 2. Extract ZIP
-      if (context.mounted) {
-        (context as Element).reassemble(); // Force UI rebuild to show next step if needed
+      await extractFileToDisk(zipPath, extractDir);
+
+      if (context.mounted && dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.pop(dialogContext!);
       }
-      extractFileToDisk(zipPath, extractDir);
 
-      // 3. Prepare paths
-      final currentExe = Platform.resolvedExecutable;
-      final appDir = File(currentExe).parent.path;
-      final updaterBat = '${tempDir.path}/apply_update.bat';
-
-      // 4. Generate self-cleaning batch script
-      final batContent = '''
-@echo off
-setlocal
-set "APP_DIR=$appDir"
-set "APP_EXE=$currentExe"
-set "SOURCE_DIR=$extractDir"
-
-timeout /t 2 /nobreak > nul
-
-:: Wait until main process fully exits
-:wait
-tasklist /FI "IMAGENAME eq ${currentExe.split('\\').last}" 2>nul | find /I "${currentExe.split('\\').last}" >nul
-if not errorlevel 1 (
-    timeout /t 1 >nul
-    goto wait
-)
-
-:: Copy new files (overwrite existing)
-xcopy "%SOURCE_DIR%\*" "%APP_DIR%\" /E /Y /I /Q /R > nul
-
-:: Restart app
-start "" "%APP_EXE%"
-
-:: Cleanup
-rmdir /s /q "%SOURCE_DIR%"
-del "%~f0"
-endlocal
-exit
-''';
-      await File(updaterBat).writeAsString(batContent);
-
-      if (context.mounted) Navigator.pop(context); // Close progress dialog
-
-      // 5. Launch updater & exit current app
-      await Process.run('cmd', ['/c', 'start', '/b', '', updaterBat], runInShell: true);
+      // 3. Run updater script
+      await _runWindowsUpdater(extractDir, zipPath);
+      await Future.delayed(const Duration(microseconds: 400));
       exit(0);
-
     } catch (e) {
+      if (context.mounted && dialogContext != null && Navigator.canPop(dialogContext!)) {
+        Navigator.pop(dialogContext!);
+      }
       if (context.mounted) {
-        Navigator.pop(context);
-        _showSnackBar(context, 'Failed to download update: $e', isError: true);
+        _showSnackBar(context, 'Update failed: ${e.toString().split('\n')}');
       }
     }
+  }
+
+  // Generates and executes a hidden batch script to replace locked files & relaunch
+  static Future<void> _runWindowsUpdater(String extractDir, String zipPath) async {
+    final tempDir = await getTemporaryDirectory();
+    final batPath = '${tempDir.path}/apply_update.bat';
+    final currentExe = Platform.resolvedExecutable;
+
+    final batContent = '''
+@echo off
+setlocal EnableDelayedExpansion
+set "CURRENT_EXE=%~1"
+set "EXTRACT_DIR=%~2"
+set "ZIP_PATH=%~3"
+
+for %%i in ("%CURRENT_EXE%") do set "EXE_NAME=%%~nxi"
+
+:: Wait for Flutter app to fully close (max 10s timeout)
+set /a WAIT_COUNT=0
+:wait
+timeout /t 1 >nul 2>&1
+set /a WAIT_COUNT+=1
+tasklist /FI "IMAGENAME eq %EXE_NAME%" 2>nul | find /I "%EXE_NAME%" >nul
+if not errorlevel 1 if !WAIT_COUNT! LSS 10 goto wait
+
+:: Overwrite app files
+xcopy "%EXTRACT_DIR%\\*" "%~dp1" /E /Y /I /Q /R > nul 2>&1
+
+:: Relaunch app
+start "" "%CURRENT_EXE%"
+
+:: Cleanup temp files & self
+timeout /t 2 >nul
+rmdir /s /q "%EXTRACT_DIR%"
+if exist "%ZIP_PATH%" del /f /q "%ZIP_PATH%"
+del /f /q "%~f0"
+exit
+''';
+
+    await File(batPath).writeAsString(batContent);
+    // runInShell ensures Windows handles the .bat correctly without showing a console window
+    await Process.start('cmd', ['/c', batPath, currentExe, extractDir], runInShell: true);
+  }
+
+  // Extracts a ZIP archive to a target directory asynchronously
+  static Future<void> extractFileToDisk(String zipPath, String outputDir) async {
+    final file = File(zipPath);
+    if (!await file.exists()) {
+      throw FileSystemException('ZIP file not found', zipPath);
+    }
+
+    await (() async {
+      final inputStream = InputFileStream(zipPath);
+      try {
+        final archive = ZipDecoder().decodeStream(inputStream);
+
+        for (final archiveFile in archive) {
+          final fileName = archiveFile.name;
+          if (fileName.isEmpty) continue;
+
+          // Normalize forward slash to OS-specific separators
+          final safeName = fileName.replaceAll('/', Platform.pathSeparator);
+          final destinationPath = '$outputDir/$safeName';
+
+          if (archiveFile.isFile) {
+            final data = archiveFile.content as List<int>;
+            final outFile = File(destinationPath);
+            await outFile.parent.create(recursive: true);
+            await outFile.writeAsBytes(data);
+          } else {
+            await Directory(destinationPath).create(recursive: true);
+          }
+        }
+      } finally {
+        await inputStream.close();
+      }
+    })();
+    await Future.delayed(const Duration(microseconds: 100));
   }
 
   static void showErrorSnackBar(BuildContext context, String message) {
