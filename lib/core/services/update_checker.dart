@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
-
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +15,13 @@ class UpdateChecker {
 
   static const String? _githubToken = null;
 
+  // Session guard to prevent repeated checks after sign-out
+  static bool _hasCheckedInCurrentSession = false;
+
   static Future<ReleaseInfo?> checkForUpdate() async {
+    if (_hasCheckedInCurrentSession) return null;
+    _hasCheckedInCurrentSession = true;
+
     if (!Platform.isWindows) return null;
 
     try {
