@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:investflow/core/models/investment.dart';
 import 'package:investflow/core/models/project.dart';
 import 'package:investflow/core/models/user_profile.dart';
 import 'package:investflow/core/providers/repository_providers.dart';
@@ -10,6 +13,10 @@ class DashboardState {
   final List<Project> ownedProjects;
   final List<Project> investedProjects;
   final List<Project> activeProjects;
+  final List<Investment> investments;
+  final double totalInvested;
+  final double totalRaised;
+  final int activeProjectsCount;
   final bool isLoading;
   final String? error;
 
@@ -18,6 +25,10 @@ class DashboardState {
     this.ownedProjects = const [],
     this.investedProjects = const [],
     this.activeProjects = const [],
+    this.investments = const [],
+    this.totalInvested = 0,
+    this.totalRaised = 0,
+    this.activeProjectsCount = 0,
     this.isLoading = false,
     this.error,
   });
@@ -27,6 +38,10 @@ class DashboardState {
     List<Project>? ownedProjects,
     List<Project>? investedProjects,
     List<Project>? activeProjects,
+    List<Investment>? investments,
+    double? totalInvested,
+    double? totalRaised,
+    int? activeProjectsCount,
     bool? isLoading,
     String? error,
   }) {
@@ -35,6 +50,10 @@ class DashboardState {
       ownedProjects: ownedProjects ?? this.ownedProjects,
       investedProjects: investedProjects ?? this.investedProjects,
       activeProjects: activeProjects ?? this.activeProjects,
+      investments: investments ?? this.investments,
+      totalInvested: totalInvested ?? this.totalInvested,
+      totalRaised: totalRaised ?? this.totalRaised,
+      activeProjectsCount: activeProjectsCount ?? this.activeProjectsCount,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -44,11 +63,17 @@ class DashboardState {
 // Dashboard Notifier
 class DashboardNotifier extends StateNotifier<DashboardState> {
   final Ref _ref;
+  StreamSubscription? _profileSubscription;
+  StreamSubscription? _ownedProjectsSubscription;
+  StreamSubscription? _investedProjectsSubscription;
+  StreamSubscription? _investmentsSubscription;
 
-  DashboardNotifier(this._ref) : super(DashboardState());
+  DashboardNotifier(this._ref) : super(DashboardState()) {
+    _setupListeners();
+  }
 
   // Initialize dashboard data
-  Future<void> initialize() async {
+  Future<void> _setupListeners() async {
     final authService = AuthService();
     final userId = authService.currentUserId;
 
@@ -57,12 +82,15 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       return;
     }
 
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, error: null);
 
     try {
       // Listen to user profile stream
-      _ref.read(currentUserProfileStreamProvider(userId)).whenData((profile) {
-        state = state.copyWith(userProfile: profile);
+      _profileSubscription = _ref
+        .read(userRepositoryProvider)
+        .getProfileStream(userId)
+        .listen((profile) {
+          state = state.copyWith(userProfile: profile);
       });
 
       // Listen to owned projects stream
@@ -85,6 +113,20 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     } finally {
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  @override
+  void dispose() {
+    _profileSubscription?.cancel();
+    _ownedProjectsSubscription?.cancel();
+    _investedProjectsSubscription?.cancel();
+    _investmentsSubscription?.cancel();
+    super.dispose();
+  }
+
+  // Refresh all data
+  Future<void> refresh() async {
+    _setupListeners();
   }
 
   // Create new project
@@ -137,6 +179,6 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 final dashboardNotifierProvider = StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
   final notifier = DashboardNotifier(ref);
   // Auto-initialize when provider is first accessed
-  Future.microtask(() => notifier.initialize());
-  return notifier;
+  //Future.microtask(() => notifier._setupListeners());
+  return DashboardNotifier(ref);
 });

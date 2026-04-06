@@ -80,12 +80,6 @@ class UpdateChecker {
 
   /// Shows a dialog and handles download/installation if confirmed
   static Future<void> promptAndInstall(BuildContext context, ReleaseInfo release) async {
-    if (release.downloadUrl == null) {
-      _showSnackBar(context, 'No Windows installer found for this release.', isError: true);
-      return;
-    }
-
-    // Update dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
