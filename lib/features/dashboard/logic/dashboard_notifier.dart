@@ -94,24 +94,46 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       });
 
       // Listen to owned projects stream
-      _ref.read(userOwnedProjectsStreamProvider(userId)).whenData((projects) {
-        state = state.copyWith(ownedProjects: projects);
+      _ownedProjectsSubscription = _ref
+        .read(projectRepositoryProvider)
+        .getProjectsByOwnerStream(userId)
+        .listen((projects) {
+          final activeCount = projects.where((p) => p.status == ProjectStatus.active).length;
+          final totalRaised = projects.fold<double>(0, (sum, p) => sum + p.raisedAmount);
+
+          state = state.copyWith(
+            ownedProjects: projects,
+            activeProjectsCount: activeCount,
+            totalRaised: totalRaised,
+          );
       });
 
       // Listen to invested projects stream
-      _ref.read(userInvestedProjectsStreamProvider(userId)).whenData((projects) {
+      _investedProjectsSubscription = _ref
+          .read(projectRepositoryProvider)
+          .getProjectsByInvestorStream(userId)
+          .listen((projects) {
         state = state.copyWith(investedProjects: projects);
       });
 
-      // Listen to active projects stream (for browsing)
-      _ref.read(activeProjectsStreamProvider).whenData((projects) {
-        state = state.copyWith(activeProjects: projects);
+      // Listen to investments
+      _investmentsSubscription = _ref
+          .read(investmentRepositoryProvider)
+          .getInvestmentsByInvestorStream(userId)
+          .listen((investments) {
+        final totalInvested = investments
+            .where((inv) => inv.status == InvestmentStatus.confirmed)
+            .fold<double>(0, (sum, inv) => sum + inv.amount);
+
+        state = state.copyWith(
+          investments: investments,
+          totalInvested: totalInvested,
+        );
       });
 
+      state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(error: e.toString());
-    } finally {
-      state = state.copyWith(isLoading: false);
     }
   }
 
@@ -177,7 +199,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
 
 // Dashboard Notifier Provider
 final dashboardNotifierProvider = StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
-  final notifier = DashboardNotifier(ref);
+  //final notifier = DashboardNotifier(ref);
   // Auto-initialize when provider is first accessed
   //Future.microtask(() => notifier._setupListeners());
   return DashboardNotifier(ref);

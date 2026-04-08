@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:investflow/core/models/investment.dart';
 import 'package:investflow/core/models/project.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 //import 'package:investflow/features/auth/logic/auth_service.dart';
@@ -9,6 +10,7 @@ import 'package:investflow/features/dashboard/logic/dashboard_notifier.dart';
 import 'package:investflow/features/dashboard/presentation/widgets/project_card.dart';
 import 'package:investflow/features/dashboard/presentation/widgets/stats_summary.dart';
 import 'package:investflow/features/dashboard/presentation/widgets/user_profile_card.dart';
+import 'package:riverpod/src/framework.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -49,8 +51,11 @@ class DashboardScreen extends ConsumerWidget {
 
             // Stats Summary
             StatsSummary(
-              ownedProjects: dashboardState.ownedProjects,
-              investedProjects: dashboardState.investedProjects,
+              totalProjects: dashboardState.ownedProjects.length,
+              activeProjects: dashboardState.activeProjectsCount,
+              totalRaised: dashboardState.totalRaised,
+              totalInvested: dashboardState.totalInvested,
+              totalInvestments: dashboardState.investments.length,
             ),
             const SizedBox(height: 24),
 
@@ -59,45 +64,53 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 24),
 
             // Section: My Projects
-            _buildSectionHeader('My Projects', 'View and manage your projects'),
-            const SizedBox(height: 12),
-            _buildProjectsList(
-              projects: dashboardState.ownedProjects,
-              emptyMessage: 'You haven\'t created any projects yet',
-              onTap: (project) => _navigateToProjectDetail(context, project.id),
+            _buildSectionHeader(
+                context,
+                'My Projects',
+              '${dashboardState.ownedProjects.length} project${dashboardState.ownedProjects.length != 1 ? 's' : ''}',
+                () => context.push('/projects')
             ),
+            const SizedBox(height: 12),
+            dashboardState.ownedProjects.isEmpty
+              ? _buildEmptyState(
+              'You haven\'t created any projects yet',
+              Icons.folder_outlined,
+              () => context.push('/projects/create'),
+              'Create project',
+              )
+              : _buildProjectsGrid(dashboardState.ownedProjects.take(3).toList()),
             const SizedBox(height: 24),
 
             // Section: My Investments
-            _buildSectionHeader('My Investments', 'Projects you\'ve invested in'),
-            const SizedBox(height: 12),
-            _buildProjectsList(
-              projects: dashboardState.investedProjects,
-              emptyMessage: 'You haven\'t invested in any projects yet',
-              onTap: (project) => _navigateToProjectDetail(context, project.id),
-            ),
+           dashboardState.investedProjects.isEmpty
+            ? _buildEmptyState(
+             'You haven\'t invested in any projects yet',
+             Icons.account_balance_outlined,
+               () => context.push('/projects'),
+             'Browse projects',
+            )
+           : _buildProjectsGrid(dashboardState.investedProjects.take(3).toList()),
             const SizedBox(height: 24),
 
-            // Section: Discover Projects
-            _buildSectionHeader('Discover', 'Browse active investment opportunities'),
-            const SizedBox(height: 12),
-            _buildProjectsList(
-              projects: dashboardState.activeProjects
-                  .where((p) => !dashboardState.ownedProjects.any((op) => op.id == p.id) &&
-                  !dashboardState.investedProjects.any((ip) => ip.id == p.id))
-                  .take(5)
-                  .toList(),
-              emptyMessage: 'No active projects available',
-              onTap: (project) => _navigateToProjectDetail(context, project.id),
-              showInvestButton: true,
-            ),
+            // Recent Activity Section
+            if (dashboardState.investments.isNotEmpty) ...[
+              _buildSectionHeader(
+                context,
+                'Recent Activity',
+                '${dashboardState.investments.length} transaction${dashboardState.investments.length != 1 ? 's' : ''}',
+                null,
+              ),
+              const SizedBox(height: 12),
+              _buildRecentActivity(dashboardState.investments.take(5).toList(), currencyFormat)
+            ]
+
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, String subtitle) {
+  Widget _buildSectionHeader(BuildContext context, String title, String subtitle, VoidCallback? onTap) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -114,10 +127,11 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ],
         ),
-        TextButton(
-          onPressed: () {},
-          child: const Text('View All'),
-        ),
+        if (onTap != null)
+          TextButton(
+            onPressed: onTap,
+            child: const Text('View All'),
+          ),
       ],
     );
   }
@@ -145,13 +159,13 @@ class DashboardScreen extends ConsumerWidget {
               icon: Icons.chat_outlined,
               label: 'Messages',
               color: Colors.purple,
-              onTap: () => _navigateToMessages(context),
+              onTap: () => _showComingSoon(context, 'Messages'),
             ),
             _buildQuickAction(
               icon: Icons.bar_chart_outlined,
               label: 'Reports',
               color: Colors.orange,
-              onTap: () {},
+              onTap: () => _showComingSoon(context, 'Reports'),
             ),
           ],
         ),
@@ -191,31 +205,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProjectsList({
-    required List<Project> projects,
-    required String emptyMessage,
-    required void Function(Project) onTap,
-    bool showInvestButton = false,
-  }) {
-    if (projects.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              Icon(Icons.inbox_outlined, size: 48, color: Colors.grey[400]),
-              const SizedBox(height: 12),
-              Text(
-                emptyMessage,
-                style: TextStyle(color: Colors.grey[600]),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
+  Widget _buildProjectsGrid(List<Project> projects) {
     return SizedBox(
       height: 280,
       child: ListView.separated(
@@ -228,7 +218,63 @@ class DashboardScreen extends ConsumerWidget {
             width: 280,
             child: ProjectCard(
               project: project,
-              onTap: () => onTap(project),
+              onTap: () => context.push('/projects/${project.id}'),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(
+      String message,
+      IconData icon,
+      VoidCallback onTap,
+      String buttonText
+      ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          children: [
+            Icon(icon, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onTap,
+              icon: const Icon(Icons.add),
+              label: Text(buttonText),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentActivity(List<dynamic> investments, NumberFormat currencyFormat) {
+    return Card(
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: investments.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final Investment investment = investments[index];
+          return ListTile(
+            leading: CircleAvatar(
+              backgroundColor: Colors.green.withValues(alpha: 0.1),
+              child: const Icon(Icons.trending_up, color: Colors.green, size: 20),
+            ),
+            title: Text('Investments in project'),
+            subtitle: Text(DateFormat.yMMMd().add_jm().format(investment.createdAt)),
+            trailing: Text(
+              currencyFormat.format(investment.amount),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
             ),
           );
         },
@@ -240,24 +286,57 @@ class DashboardScreen extends ConsumerWidget {
 
   void _showEditProfileDialog(BuildContext context, WidgetRef ref) {
     // Implement profile editing
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile editing coming soon!')),
+    final nameCtrl = TextEditingController(
+      text: ref.read(dashboardNotifierProvider).userProfile?.fullName ?? '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profile'),
+        content: TextField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Full name',
+            border: OutlineInputBorder()
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              try {
+                await ref.read(dashboardNotifierProvider.notifier).updateProfile({
+                  'fullName': nameCtrl.text.trim()
+                });
+                
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profile updated successfully'))
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to update profile: $e'))
+                  );
+                }
+              }
+            },
+            child: const Text('Save'),
+          )
+        ],
+      )
     );
   }
 
-  void _navigateToProjectDetail(BuildContext context, String projectId) {
-    // Navigate to project detail screen
-    // context.push('/projects/$projectId');
+  void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Opening project: $projectId')),
-    );
-  }
-
-  void _navigateToMessages(BuildContext context) {
-    // Navigate to messages screen
-    // context.push('/messages');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Messages coming soon!')),
+      SnackBar(content: Text('$feature coming soon!')),
     );
   }
 }
