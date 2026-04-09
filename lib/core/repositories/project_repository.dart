@@ -72,6 +72,18 @@ class ProjectRepository {
           .toList());
   }
 
+  // Get active projects that user is invested in
+  Stream<List<Project>> getActiveProjectsStreamForUser(String userId) {
+    return _collection
+        .where('investorIds', arrayContains: userId)
+        .where('status', isEqualTo: 'active')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+          .map((doc) => Project.fromFirestore(doc))
+          .toList());
+  }
+
   // Update project
   Future<void> updateProject(String projectId, Map<String, dynamic> data) async {
     await _collection.doc(projectId).update({

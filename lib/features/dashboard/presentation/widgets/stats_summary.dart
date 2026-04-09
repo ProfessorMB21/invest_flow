@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:investflow/core/models/project.dart';
+import 'package:investflow/core/models/investment.dart';
 
 class StatsSummary extends StatelessWidget {
   final int totalProjects;
@@ -8,6 +8,7 @@ class StatsSummary extends StatelessWidget {
   final double totalRaised;
   final double totalInvested;
   final int totalInvestments;
+  final List<Investment> investments;
 
   const StatsSummary({
     super.key,
@@ -16,6 +17,7 @@ class StatsSummary extends StatelessWidget {
     required this.totalRaised,
     required this.totalInvested,
     required this.totalInvestments,
+    required this.investments,
   });
 
   @override
@@ -24,54 +26,60 @@ class StatsSummary extends StatelessWidget {
 
     return Row(
       children: [
-        Row(
-          children: [
-            _buildStatCard(
-              icon: Icons.folder_outlined,
-              label: 'Total Projects',
-              value: totalProjects.toString(),
-              subtitle: '$activeProjects active',
-              color: Colors.blue,
-            ),
-            const SizedBox(width: 12),
-            _buildStatCard(
-              icon: Icons.trending_up_outlined,
-              label: 'Total Raised',
-              value: currencyFormat.format(totalRaised),
-              subtitle: 'From your projects',
-              color: Colors.green,
-            ),
-          ],
+        Expanded(
+          child: Row(
+            children: [
+              _buildStatCard(
+                icon: Icons.folder_outlined,
+                label: 'Total Projects',
+                value: totalProjects.toString(),
+                subtitle: '$activeProjects active',
+                color: Colors.blue,
+              ),
+              const SizedBox(width: 12),
+              _buildStatCard(
+                icon: Icons.trending_up_outlined,
+                label: 'Total Raised',
+                value: currencyFormat.format(totalRaised),
+                subtitle: 'From your projects',
+                color: Colors.green,
+              ),
+            ],
+          ),
         ),
         const SizedBox(width: 12),
-        Row(
-          children: [
-            _buildStatCard(
-              icon: Icons.account_balance_wallet_outlined,
-              label: 'Total Invested',
-              value: currencyFormat.format(totalInvested),
-              subtitle: 'In $totalInvestments project${totalInvestments != 1 ? 's' : ''}',
-              color: Colors.purple,
-            ),
-            const SizedBox(width: 12),
-            _buildStatCard(
-              icon: Icons.pie_chart_outline,
-              label: 'Portfolio',
-              value: '${_calculateROI().toStringAsFixed(1)}%',
-              subtitle: 'Return on investment',
-              color: Colors.orange,
-            )
-          ],
+        Expanded(
+          child: Row(
+            children: [
+              _buildStatCard(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'Total Invested',
+                value: currencyFormat.format(totalInvested),
+                subtitle: 'In $totalInvestments project${totalInvestments != 1 ? 's' : ''}',
+                color: Colors.purple,
+              ),
+              const SizedBox(width: 12),
+              _buildStatCard(
+                icon: Icons.pie_chart_outline,
+                label: 'Portfolio',
+                value: '${_calculateROI().toStringAsFixed(1)}%',
+                subtitle: 'Return on investment',
+                color: Colors.orange,
+              )
+            ],
+          ),
         )
 
       ],
     );
   }
 
-  double _calculateROI() {
-    if (totalInvested == 0) return 0.0;
-    // Simplified ROI calculation
-    return ((totalRaised - totalInvested) / totalInvested) * 100;
+  double _calculateROI({int investedProjectsCount = 0}) {
+    // Calculate ROI based on portfolio
+    // ROI = (totalRaised - totalInvested) / totalInvested * 100
+    final effectiveInvested = totalInvested > 0 ? totalInvested : investedProjectsCount;
+    if (effectiveInvested == 0) return 0.0;
+    return ((totalRaised - totalInvested) / effectiveInvested) * 100;
   }
 
   Widget _buildStatCard({

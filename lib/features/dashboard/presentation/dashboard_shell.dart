@@ -33,10 +33,11 @@ class _DashboardShellState extends State<DashboardShell> {
       : AppBar(
         title: const Text("InvestFlow"),
         actions: [
-          IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () => context.push('/settings')
-          ),
+          // TODO: Add settings route when settings screen is implemented
+          // IconButton(
+          //     icon: const Icon(Icons.settings),
+          //     onPressed: () => context.push('/settings')
+          // ),
           IconButton(onPressed: _logout, icon: const Icon(Icons.logout))
         ],
       ),

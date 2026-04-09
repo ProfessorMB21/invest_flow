@@ -18,6 +18,8 @@ class ProjectDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
+  late Project? _project;
+
   @override
   void initState() {
     super.initState();
@@ -25,10 +27,7 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(projectNotifierProvider.notifier).loadProject(widget.projectId);
     });
-
   }
-
-  // ================= Navigation methods
 
   // Navigates back to previous page
   void _goBack() {
@@ -462,25 +461,21 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
   void _handleMenuAction(String value, Project project) {
     switch (value) {
       case 'edit':
-      // Navigate to edit screen
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Edit project coming soon!')),
         );
         break;
       case 'milestones':
-      // Navigate to milestones screen
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Milestones coming soon!')),
         );
         break;
       case 'investors':
-      // Show investors list
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Investors list coming soon!')),
         );
         break;
       case 'report':
-      // Report project
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Report submitted!')),
         );
@@ -489,9 +484,8 @@ class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
   }
 }
 
-extension StringExtension on String {
+extension on String {
   String capitalize() {
-    if (isEmpty) return this;
-    return "${this[0].toUpperCase()}${substring(1)}";
+    return this[0].toUpperCase() + substring(1);
   }
 }
