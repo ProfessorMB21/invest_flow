@@ -1,5 +1,6 @@
+// Dashboard State
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:investflow/core/models/project.dart';
 import 'package:investflow/core/models/user_profile.dart';
 import 'package:investflow/core/providers/repository_providers.dart';
@@ -7,34 +8,38 @@ import 'package:investflow/features/auth/logic/auth_service.dart';
 
 class DashboardState {
   final UserProfile? userProfile;
-  final List<Project> ownedProjects;
+  final List<Project> myProjects;
   final List<Project> investedProjects;
   final List<Project> activeProjects;
+  final double totalRaised;
   final bool isLoading;
   final String? error;
 
   DashboardState({
     this.userProfile,
-    this.ownedProjects = const [],
+    this.myProjects = const [],
     this.investedProjects = const [],
     this.activeProjects = const [],
+    this.totalRaised = 0.0,
     this.isLoading = false,
     this.error,
   });
 
   DashboardState copyWith({
     UserProfile? userProfile,
-    List<Project>? ownedProjects,
+    List<Project>? myProjects,
     List<Project>? investedProjects,
     List<Project>? activeProjects,
+    double? totalRaised,
     bool? isLoading,
     String? error,
   }) {
     return DashboardState(
       userProfile: userProfile ?? this.userProfile,
-      ownedProjects: ownedProjects ?? this.ownedProjects,
+      myProjects: myProjects ?? this.myProjects,
       investedProjects: investedProjects ?? this.investedProjects,
       activeProjects: activeProjects ?? this.activeProjects,
+      totalRaised: totalRaised ?? this.totalRaised,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -42,101 +47,133 @@ class DashboardState {
 }
 
 // Dashboard Notifier
-class DashboardNotifier extends StateNotifier<DashboardState> {
-  final Ref _ref;
+class DashboardNotifier extends AsyncNotifier<DashboardState> {
+  final AuthService _authService = AuthService();
+  double _totalBalance = 0.0;
 
-  DashboardNotifier(this._ref) : super(DashboardState());
-
-  // Initialize dashboard data
-  Future<void> initialize() async {
-    final authService = AuthService();
-    final userId = authService.currentUserId;
-
+  @override
+  Future<DashboardState> build() async {
+    final userId = _authService.currentUserId;
     if (userId == null) {
-      state = state.copyWith(error: 'User not authenticated');
+      return DashboardState();
+    }
+
+    try {
+      // Get user profile stream and wait for first value
+      final profileStream = ref.watch(userRepositoryProvider).getProfileStream(userId);
+      final userProfile = await profileStream.first;
+
+      if (userProfile != null) {
+        // Get owned projects
+        final ownedProjectsStream = ref.watch(projectRepositoryProvider).getProjectsByOwnerStream(userId);
+        final ownedProjects = await ownedProjectsStream.first;
+
+        // Get invested projects
+        final investedProjectsStream = ref.watch(projectRepositoryProvider).getProjectsByInvestorStream(userId);
+        final investedProjects = await investedProjectsStream.first;
+
+        // Get active projects for user
+        final activeProjectsStream = ref.watch(projectRepositoryProvider).getActiveProjectsStreamForUser(userId);
+        final activeProjects = await activeProjectsStream.first;
+
+        // Calculate total balance from owned projects
+        _totalBalance = ownedProjects.fold<double>(
+          0,
+          (sum, project) => sum + project.raisedAmount,
+        );
+
+        return DashboardState(
+          userProfile: userProfile,
+          myProjects: ownedProjects,
+          investedProjects: investedProjects,
+          activeProjects: activeProjects,
+          totalRaised: _totalBalance,
+          isLoading: false,
+        );
+      } else {
+        // Profile doesn't exist yet, create it
+        await createOrUpdateProfile();
+        return state.value ?? DashboardState();
+      }
+    } catch (e) {
+      return DashboardState(error: e.toString(), isLoading: false);
+    }
+  }
+
+  // Create/update user profile if it doesn't exist
+  Future<void> createOrUpdateProfile() async {
+    try {
+      final userRepository = ref.read(userRepositoryProvider);
+
+      // Create initial profile with default values
+      final userProfile = UserProfile(
+        id: _authService.currentUserId ?? '',
+        fullName: 'User',
+        email: _authService.currentUserEmail ?? '',
+        role: UserRole.investor,
+        createdAt: DateTime.now(),
+      );
+
+      await userRepository.createOrUpdateProfile(userProfile);
+      // Trigger rebuild
+      ref.invalidateSelf();
+    } catch (e) {
+      debugPrint('Error creating/updating profile: $e');
+    }
+  }
+
+  // Refresh data
+  Future<void> refresh() async {
+    ref.invalidateSelf();
+  }
+
+  // Check for updates
+  Future<void> checkForUpdates({
+    bool autoCheck = false,
+    Duration checkInterval = const Duration(seconds: 10),
+  }) async {
+    final userId = _authService.authState.userId;
+
+    if (userId == null || !_authService.authState.isAuthenticated) {
       return;
     }
 
-    state = state.copyWith(isLoading: true);
-
     try {
-      // Listen to user profile stream
-      _ref.read(currentUserProfileStreamProvider(userId)).whenData((profile) {
-        state = state.copyWith(userProfile: profile);
-      });
+      // Skip if auto-check and already loading
+      if (autoCheck && state.isLoading) {
+        return;
+      }
 
-      // Listen to owned projects stream
-      _ref.read(userOwnedProjectsStreamProvider(userId)).whenData((projects) {
-        state = state.copyWith(ownedProjects: projects);
-      });
-
-      // Listen to invested projects stream
-      _ref.read(userInvestedProjectsStreamProvider(userId)).whenData((projects) {
-        state = state.copyWith(investedProjects: projects);
-      });
-
-      // Listen to active projects stream (for browsing)
-      _ref.read(activeProjectsStreamProvider).whenData((projects) {
-        state = state.copyWith(activeProjects: projects);
-      });
-
+      // Just refresh to get latest data
+      await refresh();
     } catch (e) {
-      state = state.copyWith(error: e.toString());
-    } finally {
-      state = state.copyWith(isLoading: false);
+      debugPrint('Error checking for updates: $e');
     }
   }
 
-  // Create new project
-  Future<String> createProject({
-    required String title,
-    required String description,
-    required double goalAmount,
-    required DateTime deadline,
-    String category = 'General',
-  }) async {
-    final authService = AuthService();
-    final userId = authService.currentUserId;
+  // Getters
+  UserProfile? get userProfile => state.value?.userProfile;
+  List<Project> get myProjects => state.value?.myProjects ?? [];
+  List<Project> get investedProjects => state.value?.investedProjects ?? [];
+  List<Project> get activeProjects => state.value?.activeProjects ?? [];
+  bool get isLoading => state.isLoading;
+  String? get error => state.error?.toString();
+  double get totalBalance => _totalBalance;
 
-    if (userId == null) throw Exception('User not authenticated');
-
-    final projectRepo = _ref.read(projectRepositoryProvider);
-
-    final project = Project(
-      id: '', // Auto-generated
-      ownerId: userId,
-      title: title,
-      description: description,
-      goalAmount: goalAmount,
-      raisedAmount: 0,
-      status: ProjectStatus.active,
-      createdAt: DateTime.now(),
-      deadline: deadline,
-      category: category,
-    );
-
-    final projectId = await projectRepo.createProject(project);
-
-    // Refresh streams automatically via Riverpod
-    return projectId;
+  double get totalInvested {
+    // Note: This calculates from projects, but should calculate from actual investment amounts
+    // This is a placeholder - investments should have amount field
+    return 0.0; // TODO: Implement proper total invested calculation from InvestmentRepository
   }
 
-  // Update user profile
-  Future<void> updateProfile(Map<String, dynamic> data) async {
-    final authService = AuthService();
-    final userId = authService.currentUserId;
+  int get totalInvestmentsCount =>
+      state.value?.investedProjects.length ?? 0;
 
-    if (userId == null) throw Exception('User not authenticated');
-
-    final userRepo = _ref.read(userRepositoryProvider);
-    await userRepo.updateProfile(userId, data);
-  }
+  int get activeProjectsCount =>
+      state.value?.activeProjects.where((p) => p.status == ProjectStatus.active).length ?? 0;
 }
 
 // Dashboard Notifier Provider
-final dashboardNotifierProvider = StateNotifierProvider<DashboardNotifier, DashboardState>((ref) {
-  final notifier = DashboardNotifier(ref);
-  // Auto-initialize when provider is first accessed
-  Future.microtask(() => notifier.initialize());
-  return notifier;
-});
+final dashboardNotifierProvider = AsyncNotifierProvider<DashboardNotifier, DashboardState>(
+  () => DashboardNotifier(),
+);

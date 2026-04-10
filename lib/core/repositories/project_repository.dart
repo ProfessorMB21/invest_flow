@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:investflow/core/models/project.dart';
 
 class ProjectRepository {
@@ -24,7 +25,7 @@ class ProjectRepository {
       }
       return null;
     } catch (e) {
-      print('Error getting project: $e');
+      debugPrint('Error getting project: $e');
       return null;
     }
   }
@@ -65,6 +66,18 @@ class ProjectRepository {
   Stream<List<Project>> getProjectsByInvestorStream(String investorId) {
     return _collection
         .where('investorIds', arrayContains: investorId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+          .map((doc) => Project.fromFirestore(doc))
+          .toList());
+  }
+
+  // Get active projects that user is invested in
+  Stream<List<Project>> getActiveProjectsStreamForUser(String userId) {
+    return _collection
+        .where('investorIds', arrayContains: userId)
+        .where('status', isEqualTo: 'active')
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs

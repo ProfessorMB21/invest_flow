@@ -48,3 +48,6 @@ app.*.map.json
 .env
 .env.local
 .env.*.local
+
+# Claude Code documentation (local only)
+CLAUDE.md

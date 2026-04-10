@@ -47,7 +47,7 @@ jobs:
     outputs:
       full_version: ${{ steps.calc.outputs.full_version }}
       version_tag: ${{ steps.calc.outputs.version_tag }}
-      is_manual_tag: ${{ steps.calc.outputs.is_mamual_tag }}
+      is_manual_tag: ${{ steps.calc.outputs.is_manual_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,8 +60,8 @@ jobs:
           if [[ "${{ github.ref }}" =~ ^refs/tags/v ]]; then
             echo "full_version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
             echo "version_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "is_manual_tag=true >> $GITHUB_OUTPUT
-            echo "Manual tag release: $"{{ github.ref_name }}"
+            echo "is_manual_tag=true" >> $GITHUB_OUTPUT
+            echo "Manual tag release: ${{ github.ref_name }}"
             exit 0
           fi
           

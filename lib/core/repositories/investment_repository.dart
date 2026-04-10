@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:investflow/core/models/investment.dart';
 
 class InvestmentRepository {
@@ -24,7 +25,7 @@ class InvestmentRepository {
       }
       return null;
     } catch (e) {
-      print('Error getting investment: $e');
+      debugPrint('Error getting investment: $e');
       return null;
     }
   }

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:investflow/core/providers/theme_provider.dart';
 import 'package:investflow/core/services/database_service.dart';
 import 'package:investflow/core/services/firestore_init_service.dart';
 import 'package:investflow/core/theme/app_theme.dart';
@@ -107,7 +108,7 @@ void main() async {
     print('***** App Initialization Complete *****');
   }
 
-  runApp(const ProviderScope(child: InvestFlowApp()));
+  runApp(ProviderScope(child: InvestFlowApp()));
 }
 
 class InvestFlowApp extends ConsumerWidget {
@@ -116,12 +117,28 @@ class InvestFlowApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(goRouterProvider);
+    final themeNotifier = ref.watch(themeModeProvider);
+    var currentThemeMode = themeNotifier.themeMode;
+    final theme = _getThemeData(currentThemeMode);
+
     return MaterialApp.router(
       title: 'InvestFlow',
-      theme: AppTheme.darkTheme,
+      theme: theme,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      themeMode: currentThemeMode,
     );
+  }
+
+  ThemeData _getThemeData(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return AppTheme.lightTheme;
+      case ThemeMode.dark:
+        return AppTheme.customDarkTheme;
+      case ThemeMode.system:
+        return AppTheme.darkTheme; // fallback
+    }
   }
 }
 

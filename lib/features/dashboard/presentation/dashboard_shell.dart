@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:investflow/features/dashboard/presentation/widgets/theme_toggle.dart';
 import 'package:investflow/features/projects/presentation/projects_screen.dart';
 
-class DashboardShell extends StatefulWidget {
+class DashboardShell extends ConsumerStatefulWidget {
   const DashboardShell({super.key});
   @override
-  State<StatefulWidget> createState() => _DashboardShellState();
+  ConsumerState<DashboardShell> createState() => _DashboardShellState();
 }
 
-class _DashboardShellState extends State<DashboardShell> {
+class _DashboardShellState extends ConsumerState<DashboardShell> {
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
@@ -33,10 +35,8 @@ class _DashboardShellState extends State<DashboardShell> {
       : AppBar(
         title: const Text("InvestFlow"),
         actions: [
-          IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () => context.push('/settings')
-          ),
+          // Theme toggle
+          const ThemeToggle(),
           IconButton(onPressed: _logout, icon: const Icon(Icons.logout))
         ],
       ),
@@ -48,6 +48,7 @@ class _DashboardShellState extends State<DashboardShell> {
               onDestinationSelected: _onItemTapped,
               labelType: NavigationRailLabelType.all,
               trailing: IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
+              leading: ThemeToggle(),
               destinations: const [
                 NavigationRailDestination(icon: Icon(Icons.dashboard), label: Text('Dashboard')),
                 NavigationRailDestination(icon: Icon(Icons.folder), label: Text('Projects')),

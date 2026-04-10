@@ -81,7 +81,9 @@ Future<bool> isInitialized() async {
 
   // Document required indexes (Firestore indexes must be created in console)
   Future<void> _documentIndexes() async {
-    print('📋 Documenting required indexes...');
+    if (kDebugMode) {
+      print('📋 Documenting required indexes...');
+    }
 
     final indexRef = _firestore.collection(appSettings).doc('indexes');
     await indexRef.set({
@@ -195,7 +197,9 @@ Future<bool> isInitialized() async {
       });
     }
 
-    print('  ✓ Added ${sampleProjects.length} sample projects');
+    if (kDebugMode) {
+      print('  ✓ Added ${sampleProjects.length} sample projects');
+    }
   }
 
   // Optional: Add sample users for testing
@@ -221,14 +225,20 @@ Future<bool> isInitialized() async {
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
-    print('  ✓ Added sample users');
+    if (kDebugMode) {
+      print('  ✓ Added sample users');
+    }
   }
 
   // Reset initialization (for development only!)
   Future<void> resetInitialization() async {
-    print('⚠️  Resetting Firestore initialization...');
+    if (kDebugMode) {
+      print('⚠️  Resetting Firestore initialization...');
+    }
     await _firestore.collection(appSettings).doc('init').delete();
-    print('✓ Initialization reset. Will reinitialize on next app launch.');
+    if (kDebugMode) {
+      print('✓ Initialization reset. Will reinitialize on next app launch.');
+    }
   }
 
   // Get initialization status

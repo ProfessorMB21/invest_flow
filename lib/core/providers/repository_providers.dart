@@ -34,10 +34,16 @@ final currentUserProfileStreamProvider = StreamProvider.family<UserProfile?, Str
   return repo.getProfileStream(userId);
 });
 
-// Active projects stream
+// Active projects stream (for all users)
 final activeProjectsStreamProvider = StreamProvider<List<Project>>((ref) {
   final repo = ref.watch(projectRepositoryProvider);
   return repo.getActiveProjectsStream();
+});
+
+// Active projects stream for specific user
+final activeProjectsProvider = StreamProvider.family<List<Project>, String>((ref, userId) {
+  final repo = ref.watch(projectRepositoryProvider);
+  return repo.getActiveProjectsStreamForUser(userId);
 });
 
 // User's Projects Stream (as owner)

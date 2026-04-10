@@ -1,6 +1,4 @@
 // Project State
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:investflow/core/models/investment.dart';
 import 'package:investflow/core/models/milestone.dart';
@@ -46,10 +44,9 @@ class ProjectState {
 
 // Project Notifier
 class ProjectNotifier extends StateNotifier<ProjectState> {
-  final Ref _ref;
   final _dbService = DatabaseService();
 
-  ProjectNotifier(this._ref) : super(ProjectState());
+  ProjectNotifier() : super(ProjectState());
 
   // Create new project
   Future<String> createProject({
@@ -143,7 +140,7 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
       final investorId = authService.currentUserId!;
 
       // Create investment record
-      final investmentId = await _dbService.investmentRepository.createInvestment(
+      await _dbService.investmentRepository.createInvestment(
         Investment(
           id: '', // auto generated
           projectId: projectId,
@@ -185,5 +182,5 @@ class ProjectNotifier extends StateNotifier<ProjectState> {
 
 // Project Notifier Provider
 final projectNotifierProvider = StateNotifierProvider<ProjectNotifier, ProjectState>((ref) {
-  return ProjectNotifier(ref);
+  return ProjectNotifier();
 });
