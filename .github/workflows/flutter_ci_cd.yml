@@ -143,6 +143,16 @@ jobs:
           $content | Set-Content pubspec.yaml
           Write-Host "✅ Version: $VERSION"
 
+      - name: Decode .env File
+        shell: pwsh
+        if: ${{ secrets.ENV_FILE_BASE64 != '' }}
+        run: |
+          $content = "${{ secrets.ENV_FILE_BASE64 }}"
+          $bytes = [Convert]::FromBase64String($content)
+          [IO.File]::WriteAllBytes(".env", $bytes)
+          Write-Host "✅ .env file decoded"
+          Get-Item .env | Select-Object Name, Length
+
       - name: Decode Firebase Options
         shell: pwsh
         run: |
