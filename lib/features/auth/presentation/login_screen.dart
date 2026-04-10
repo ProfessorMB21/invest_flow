@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -49,10 +52,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   // ======================== Application version updater
-  Future<void> _initializeScreen() async {
+  /// Reads version from version.json, falls back to package_info
+  Future<String> _getVersionFromFile() async {
+    try {
+      final versionFile = File('version.json');
+      if (await versionFile.exists()) {
+        final content = await versionFile.readAsString();
+        final data = jsonDecode(content) as Map<String, dynamic>;
+        final version = data['version']?.toString();
+        if (version != null && version.isNotEmpty) {
+          return version;
+        }
+      }
+    } catch (e) {
+      debugPrint('Could not read version.json: $e');
+    }
+    // Fallback to package_info
     final packageInfo = await PackageInfo.fromPlatform();
+    return packageInfo.version;
+  }
+
+  Future<void> _initializeScreen() async {
+    final version = await _getVersionFromFile();
     if (!mounted) return;
-    setState(() => _appVersion = 'v${packageInfo.version}');
+    setState(() => _appVersion = 'v$version');
 
     // Check for updates (skip if already checked this session)
     try {
@@ -228,6 +251,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             right: 4,
             child: ThemeToggle(),
           ),
+
+          // Test update checker button (debug only)
+          if (kDebugMode)
+            Positioned(
+              top: 4,
+              right: 60,
+              child: IconButton(
+                icon: const Icon(Icons.bug_report, color: Colors.orange),
+                tooltip: 'Test Update Checker',
+                onPressed: () async {
+                  final results = await UpdateChecker.runTest();
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('UpdateChecker Test Results'),
+                        content: SingleChildScrollView(
+                          child: Text(
+                            results.entries.map((e) => '${e.key}: ${e.value}').join('\n'),
+                            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Close'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
 
           // Login UI
           SafeArea(

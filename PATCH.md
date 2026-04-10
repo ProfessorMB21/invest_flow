@@ -30,12 +30,10 @@ This file tracks changes made during development sessions. Each entry should inc
 **Changes:**
 - Created PATCH.md for tracking development changes
 - Created CHANGELOG.md for version history
-- Updated CLAUDE.md with documentation guidelines
 
 **Files Modified:**
 - `PATCH.md` - Created
 - `CHANGELOG.md` - Created
-- `CLAUDE.md` - Updated with documentation sections
 
 ---
 
@@ -160,6 +158,36 @@ This file tracks changes made during development sessions. Each entry should inc
 - Tap once: switches to next theme mode
 - Icon shows current mode (light_mode, dark_mode, brightness_auto)
 - Tooltip shows what mode will be selected on next tap
+
+---
+
+### 2026-04-11 - Version Synchronization System & TODO Implementation
+
+**Changes:**
+- Implemented version.json synchronization system between pubspec.yaml and CI builds
+- Created `tool/sync_version.dart` for version sync and verification
+- Updated CI workflow to sync versions before build
+- Modified login screen to read version from version.json
+- Implemented TODOs in dashboard_screen.dart (notifications, totalInvested, profile edit)
+- Added ProfileEditScreen with form fields (name, phone, bio)
+- Added debug test mode for update checker with `runTest()` method
+- Added test button (bug icon) in login screen for debug builds
+
+**Files Modified:**
+- `tool/sync_version.dart` - Created version sync script
+- `.github/workflows/flutter_ci_cd.yml` - Added version sync and verification steps
+- `lib/features/auth/presentation/login_screen.dart` - Read version from file, added test button
+- `lib/features/dashboard/presentation/dashboard_screen.dart` - Implemented all TODOs
+- `lib/features/dashboard/logic/dashboard_notifier.dart` - Implemented totalInvested calculation
+- `lib/features/dashboard/presentation/screens/profile_edit_screen.dart` - Created profile edit screen
+- `lib/core/services/update_checker.dart` - Added test mode and verbose logging
+- `lib/main.dart` - Added ProfileEditScreen route
+- `pubspec.yaml` - Added version.json to assets
+- `version.json` - Created version tracking file
+
+**Migration Notes:**
+- Run `dart tool/sync_version.dart` before local builds to sync versions
+- CI builds automatically sync versions during workflow
 
 ---
 

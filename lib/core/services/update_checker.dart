@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -35,49 +36,138 @@ class UpdateChecker {
 
   /// Checks if an update is available
   /// Returns [ReleaseInfo] if update is available, null otherwise
-  static Future<ReleaseInfo?> checkForUpdate() async {
-    if (_hasCheckedInCurrentSession) return null;
+  /// Set [testMode] to true to bypass debug restrictions and see verbose logs
+  static Future<ReleaseInfo?> checkForUpdate({bool testMode = false}) async {
+    if (_hasCheckedInCurrentSession && !testMode) return null;
     _hasCheckedInCurrentSession = true;
 
-    if (!Platform.isWindows) return null;
+    // Skip update check in debug mode (dev builds shouldn't auto-update)
+    // Test mode bypasses this for verification
+    if (kDebugMode && !testMode) {
+      debugPrint('[UpdateChecker] Update check skipped in debug mode');
+      debugPrint('[UpdateChecker] Pass testMode: true to test update functionality');
+      return null;
+    }
+
+    if (!Platform.isWindows && !testMode) return null;
 
     try {
+      if (testMode) debugPrint('[UpdateChecker] TEST MODE: Checking GitHub API...');
+
       final headers = {
         'Accept': 'application/vnd.github+json',
         if (_githubToken != null) 'Authorization': 'Bearer $_githubToken',
       };
 
+      if (testMode) debugPrint('[UpdateChecker] Fetching: $_apiUrl');
       final response = await http.get(Uri.parse(_apiUrl), headers: headers);
       if (response.statusCode != 200) {
-        debugPrint('GitHub API returned ${response.statusCode}');
+        debugPrint('[UpdateChecker] GitHub API returned ${response.statusCode}');
         return null;
       }
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final latestVersionStr = data['tag_name']?.toString() ?? '';
-      final currentVersionStr = await _getCurrentVersion();
+      final currentVersionStr = await _getCurrentVersion(testMode: testMode);
 
-      if (latestVersionStr.isEmpty || currentVersionStr.isEmpty) return null;
+      if (testMode) {
+        debugPrint('[UpdateChecker] Current version: $currentVersionStr');
+        debugPrint('[UpdateChecker] Latest version: $latestVersionStr');
+      }
+
+      if (latestVersionStr.isEmpty || currentVersionStr.isEmpty) {
+        debugPrint('[UpdateChecker] Empty version string');
+        return null;
+      }
 
       // Strip 'v' prefix if present and parse
       final currentVersion = Version.parse(currentVersionStr.replaceAll(RegExp(r'^v'), ''));
       final latestVersion = Version.parse(latestVersionStr.replaceAll(RegExp(r'^v'), ''));
 
+      if (testMode) {
+        debugPrint('[UpdateChecker] Parsed current: $currentVersion');
+        debugPrint('[UpdateChecker] Parsed latest: $latestVersion');
+        debugPrint('[UpdateChecker] Update available: ${latestVersion > currentVersion}');
+      }
+
       if (latestVersion > currentVersion) {
+        final downloadUrl = _getWindowsAssetUrl(data);
+        if (testMode) {
+          debugPrint('[UpdateChecker] Download URL: $downloadUrl');
+        }
         return ReleaseInfo(
           version: latestVersionStr,
           releaseNotes: data['body'] ?? 'No release notes available.',
-          downloadUrl: _getWindowsAssetUrl(data),
+          downloadUrl: downloadUrl,
         );
+      } else if (testMode) {
+        debugPrint('[UpdateChecker] No update needed - running latest version');
       }
-    } catch (e) {
-      debugPrint('Update check failed: $e');
+    } catch (e, stack) {
+      debugPrint('[UpdateChecker] Update check failed: $e');
+      if (testMode) debugPrint('[UpdateChecker] Stack trace: $stack');
     }
     return null;
   }
 
-  static Future<String> _getCurrentVersion() async {
+  static Future<String> _getCurrentVersion({bool testMode = false}) async {
+    // Try to read CI-built version file first (production builds)
+    // This file is written during CI and bundled with the app
+    final possiblePaths = [
+      'version.json', // Same directory as executable (CI builds)
+      '../version.json', // Relative to executable in build output
+      'data/flutter_assets/version.json', // Flutter assets bundle location
+    ];
+
+    for (final path in possiblePaths) {
+      try {
+        final versionFile = File(path);
+        final exists = await versionFile.exists();
+
+        if (testMode) {
+          debugPrint('[UpdateChecker] Checking path: $path');
+          debugPrint('[UpdateChecker]   Exists: $exists');
+        }
+
+        if (!exists) continue;
+
+        final content = await versionFile.readAsString();
+
+        // Skip if empty
+        if (content.trim().isEmpty) {
+          if (testMode) debugPrint('[UpdateChecker]   File is empty, trying next');
+          continue;
+        }
+
+        if (testMode) debugPrint('[UpdateChecker]   Content: $content');
+
+        final data = jsonDecode(content) as Map<String, dynamic>?;
+        if (data == null) {
+          if (testMode) debugPrint('[UpdateChecker]   JSON is null, trying next');
+          continue;
+        }
+
+        final version = data['version']?.toString();
+        if (version == null || version.isEmpty) {
+          if (testMode) debugPrint('[UpdateChecker]   Version field empty, trying next');
+          continue;
+        }
+
+        debugPrint('[UpdateChecker] Using version from $path: $version');
+        return version;
+
+      } catch (e) {
+        if (testMode) debugPrint('[UpdateChecker]   Error reading $path: $e');
+        // Continue to next path
+      }
+    }
+
+    // Fall back to package_info (development builds or when version.json not found)
+    debugPrint('[UpdateChecker] version.json not found in any location, using package_info fallback');
     final packageInfo = await PackageInfo.fromPlatform();
+    if (testMode) {
+      debugPrint('[UpdateChecker] Using package_info version: ${packageInfo.version}');
+    }
     return packageInfo.version;
   }
 
@@ -404,6 +494,75 @@ exit
         duration: const Duration(seconds: 5),
       ),
     );
+  }
+
+  /// Test method to verify update checker functionality in debug mode
+  /// Returns detailed test results as a map
+  static Future<Map<String, dynamic>> runTest() async {
+    debugPrint('╔══════════════════════════════════════════════════════════════╗');
+    debugPrint('║          UpdateChecker Test Mode - START                    ║');
+    debugPrint('╚══════════════════════════════════════════════════════════════╝');
+
+    final results = <String, dynamic>{
+      'timestamp': DateTime.now().toIso8601String(),
+      'platform': Platform.operatingSystem,
+      'isWindows': Platform.isWindows,
+      'isDebug': kDebugMode,
+    };
+
+    // Test 1: Version retrieval
+    debugPrint('\n[Test 1] Getting current version...');
+    try {
+      final version = await _getCurrentVersion(testMode: true);
+      results['currentVersion'] = version;
+      results['versionTest'] = 'PASS';
+    } catch (e) {
+      results['versionTest'] = 'FAIL';
+      results['versionError'] = e.toString();
+    }
+
+    // Test 2: GitHub API check
+    debugPrint('\n[Test 2] Checking GitHub API...');
+    try {
+      final update = await checkForUpdate(testMode: true);
+      results['updateAvailable'] = update != null;
+      results['apiTest'] = 'PASS';
+      if (update != null) {
+        results['latestVersion'] = update.version;
+        results['downloadUrl'] = update.downloadUrl;
+        results['releaseNotes'] = update.releaseNotes.substring(
+          0, update.releaseNotes.length > 200 ? 200 : update.releaseNotes.length,
+        );
+      }
+    } catch (e) {
+      results['apiTest'] = 'FAIL';
+      results['apiError'] = e.toString();
+    }
+
+    // Test 3: Version file check
+    debugPrint('\n[Test 3] Checking version file...');
+    try {
+      final versionFile = File('assets/version.json');
+      results['versionFileExists'] = await versionFile.exists();
+      if (results['versionFileExists']) {
+        final content = await versionFile.readAsString();
+        results['versionFileContent'] = content;
+      }
+      results['fileTest'] = 'PASS';
+    } catch (e) {
+      results['fileTest'] = 'FAIL';
+      results['fileError'] = e.toString();
+    }
+
+    debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+    debugPrint('║          UpdateChecker Test Mode - COMPLETE                  ║');
+    debugPrint('╚══════════════════════════════════════════════════════════════╝');
+    debugPrint('\nResults:');
+    results.forEach((key, value) {
+      debugPrint('  $key: $value');
+    });
+
+    return results;
   }
 }
 

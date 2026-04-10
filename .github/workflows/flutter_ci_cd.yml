@@ -134,14 +134,33 @@ jobs:
         run: flutter pub get
 
       # --- Dynamic Versioning (PowerShell) ---
-      - name: Update Pubspec Version
+      # CI updates version.json, pubspec.yaml reads from it via sync script
+      - name: Update Version File (CI)
         shell: pwsh
         run: |
           $VERSION = "${{ needs.calculate-version.outputs.full_version }}"
-          $content = Get-Content pubspec.yaml
-          $content = $content -replace '^version: .*', "version: $VERSION"
-          $content | Set-Content pubspec.yaml
-          Write-Host "✅ Version: $VERSION"
+          $BUILD_TIME = (Get-Date -Format "yyyy-MM-ddTHH:mm:ssZ")
+          $versionJson = @{version = $VERSION; buildTime = $BUILD_TIME; source = "ci-build"} | ConvertTo-Json
+          $versionJson | Set-Content "version.json"
+          Write-Host "✅ Created version.json: $VERSION"
+          Get-Content "version.json"
+
+      - name: Sync Version to Pubspec
+        run: dart tool/sync_version.dart
+
+      - name: Verify Versions
+        shell: pwsh
+        run: |
+          $pubspecVersion = (Select-String -Path "pubspec.yaml" -Pattern '^version: (.+)$').Matches.Groups[1].Value.Trim()
+          $jsonContent = Get-Content "version.json" | ConvertFrom-Json
+          Write-Host "📄 version.json: $($jsonContent.version)"
+          Write-Host "📄 pubspec.yaml: $pubspecVersion"
+          if ($pubspecVersion -eq $jsonContent.version) {
+            Write-Host "✅ Versions match!"
+          } else {
+            Write-Host "❌ Version mismatch!"
+            exit 1
+          }
 
       - name: Decode .env File
         shell: pwsh

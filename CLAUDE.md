@@ -226,16 +226,30 @@ Navigation uses GoRouter with named routes:
 final router = GoRouter(
   routes: [
     GoRoute(
-      path: '/',
-      builder: (ctx, state) => const SplashScreen(),
+      path: '/login',
+      builder: (ctx, state) => const LoginScreen(),
     ),
     GoRoute(
-      path: '/dashboard',
-      builder: (ctx, state) => DashboardScreen(),
+      path: '/',
+      builder: (ctx, state) => const DashboardShell(),
     ),
     GoRoute(
       path: '/projects',
-      builder: (ctx, state) => ProjectsScreen(),
+      builder: (ctx, state) => const ProjectsScreen(),
+    ),
+    GoRoute(
+      path: '/projects/create',
+      builder: (ctx, state) => const CreateProjectScreen(),
+    ),
+    GoRoute(
+      path: '/projects/:projectId',
+      builder: (ctx, state) => ProjectDetailScreen(
+        projectId: state.pathParameters['projectId']!,
+      ),
+    ),
+    GoRoute(
+      path: '/profile/edit',
+      builder: (ctx, state) => const ProfileEditScreen(),
     ),
   ],
 );
@@ -248,6 +262,18 @@ App uses custom theme in `lib/theme/app_theme.dart`:
 - `lightTheme` - Default light mode
 - `darkTheme` - Dark mode with grey cards
 - Uses Google Fonts Inter
+
+#### Theme Toggle
+
+Theme mode managed via `ThemeNotifierState` (ChangeNotifier):
+
+```dart
+// Cycle through: light → dark → system → light
+ref.read(themeModeProvider.notifier).cycleThemeMode();
+```
+
+- Toggle button in dashboard app bar and login screen
+- Uses `ChangeNotifierProvider` for reactive UI updates
 
 ---
 
@@ -281,6 +307,26 @@ Key packages:
 - `google_sign_in`, `firebase_auth` - Authentication
 - `google_fonts` - Typography
 - `flutter_local_notifications` - Push notifications
+- `package_info_plus` - App version info
+- `http`, `path_provider`, `archive` - Update downloading
+
+### Auto-Update System (Windows)
+
+Automatic updates via GitHub releases:
+
+**Flow:**
+1. Check GitHub releases on startup (once per session)
+2. Download ZIP if newer version exists
+3. Extract to temp, run batch updater
+4. Batch script replaces files and relaunches
+
+**Usage:**
+```dart
+final update = await UpdateChecker.checkForUpdate();
+if (update != null) {
+  await UpdateChecker.promptAndInstall(context, update);
+}
+```
 
 ---
 
@@ -354,28 +400,29 @@ Update `CHANGELOG.md` for:
 
 ## Known Issues & Technical Debt
 
-### Critical (Blocking)
-| Issue | Location | Fix |
-|-------|----------|-----|
-| `final` field reassignment | `theme_provider.dart:10` | Remove `final` keyword |
-| Import path error | `theme_toggle.dart:3` | Use `package:` import |
-| Provider access error | `main.dart:120` | Fix notifier access pattern |
+### Resolved ✅
+| Issue | Location | Resolution |
+|-------|----------|------------|
+| `final` field reassignment | `theme_provider.dart:10` | Removed `final` keyword |
+| Import path error | `theme_toggle.dart:3` | Changed to `package:` import |
+| Provider access error | `main.dart:120` | Fixed notifier access pattern |
+| `avoid_print` warnings | Multiple files | Replaced with `debugPrint` in `kDebugMode` |
+| `withOpacity` deprecated | 7 instances | Replaced with `withValues()` |
+| Unused imports/variables | 6 instances | Removed |
+| `flutter_lints` dependency | `pubspec.yaml` | Moved to dev_dependencies |
+| CI/CD workflow syntax errors | `.github/workflows/flutter_ci_cd.yml` | Fixed |
+| Dashboard TODOs | `dashboard_screen.dart` | Implemented (notifications, totalInvested, profile edit) |
 
-### High Priority
-| Issue | Count | Action |
-|-------|-------|--------|
-| `avoid_print` | 17 | Replace with debugPrint or logger |
-| `withOpacity` deprecated | 7 | Replace with `withValues()` |
-| Unused code | 6 | Remove or use |
+### High Priority (Pending)
+None - all resolved.
 
-### Medium Priority
+### Medium Priority (Pending)
 | Issue | Count | Action |
 |-------|-------|--------|
 | Deprecated Radio API | 4 | Migrate to RadioGroup |
 | BuildContext async gaps | 2 | Add mounted checks |
 | Widget style issues | 1 | Reorder constructor args |
 
-### Low Priority
+### Low Priority (Pending)
 - Test coverage is minimal
-- `flutter_lints` in wrong dependencies section
 - Naming style inconsistencies (`__` in variables)

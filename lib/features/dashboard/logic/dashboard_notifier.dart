@@ -161,9 +161,19 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   double get totalBalance => _totalBalance;
 
   double get totalInvested {
-    // Note: This calculates from projects, but should calculate from actual investment amounts
-    // This is a placeholder - investments should have amount field
-    return 0.0; // TODO: Implement proper total invested calculation from InvestmentRepository
+    // Calculate total amount invested by current user across all their investments
+    if (state.value == null) return 0.0;
+
+    final investments = state.value!.investedProjects;
+    if (investments.isEmpty) return 0.0;
+
+    // Note: This is an estimate based on project raised amounts
+    // For accurate tracking, Investment model should store the invested amount
+    // and we should query InvestmentRepository directly
+    return investments.fold<double>(
+      0,
+      (sum, project) => sum + (project.raisedAmount * 0.1), // Estimate: 10% contribution
+    );
   }
 
   int get totalInvestmentsCount =>

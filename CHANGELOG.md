@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update check progress callbacks for better UX
 - `cycleThemeMode()` method to ThemeNotifierState
 - `hasCheckedInCurrentSession` getter to UpdateChecker
+- **Version synchronization system** - `version.json` synced with pubspec.yaml
+- `tool/sync_version.dart` - Version sync and verification script
+- **Profile edit screen** - Full profile editing with name, phone, bio fields
+- **Debug test mode** for update checker with `runTest()` method
+- Test button (bug icon) in login screen for debug builds
 
 ### Changed
 - Updated CLAUDE.md with documentation structure
@@ -23,7 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Moved `flutter_lints` from dependencies to dev_dependencies
 - **Theme toggle UI**: Changed from dropdown menu to single-tap cycle button
 - **Update checker**: Complete refactor with cleaner architecture, raw string batch scripts
-- CI/CD workflow: Fixed syntax errors in version calculation
+- CI/CD workflow: Fixed syntax errors, added version sync verification
+- Login screen version display now reads from `version.json`
+- Dashboard TODOs implemented (notifications, totalInvested calculation, profile edit)
 
 ### Fixed
 - Theme provider compilation errors (removed `final` from `_themeMode`)
@@ -33,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Deprecated `withOpacity()` → `withValues(alpha:)` (7 instances)
 - Removed unused imports and variables (6 instances)
 - Wrapped debug prints in `kDebugMode` checks
+- CI/CD workflow syntax errors (`if : success()` → `if: success()`)
 
 ### Known Issues
 - 2 BuildContext async gaps remaining (non-blocking)

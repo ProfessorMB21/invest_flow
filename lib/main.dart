@@ -9,6 +9,7 @@ import 'package:investflow/core/services/firestore_init_service.dart';
 import 'package:investflow/core/theme/app_theme.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/auth/logic/auth_provider_interface.dart';
+import 'package:investflow/features/dashboard/presentation/screens/profile_edit_screen.dart';
 import 'package:investflow/features/projects/presentation/create_project_screen.dart';
 import 'package:investflow/features/projects/presentation/project_detail_screen.dart';
 import 'package:investflow/features/projects/presentation/projects_screen.dart';
@@ -77,7 +78,10 @@ void main() async {
           return ProjectDetailScreen(projectId: projectId);
         }
       ),
-      // settings screen coming soon
+      GoRoute(
+        path: '/profile/edit',
+        builder: (context, state) => const ProfileEditScreen(),
+      ),
     ],
     redirect: (context, state) {
       final authService = AuthService();
