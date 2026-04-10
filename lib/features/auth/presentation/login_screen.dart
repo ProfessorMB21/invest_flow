@@ -1,18 +1,20 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:investflow/core/services/update_checker.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
+import 'package:investflow/features/dashboard/presentation/widgets/theme_toggle.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
@@ -28,9 +30,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isSignUpMode = false;
 
   String _appVersion = '';
-  bool _isCheckingUpdate = false;
 
-  @override @override
+  @override
   void initState() {
     super.initState();
     _initializeScreen();
@@ -53,13 +54,21 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _appVersion = 'v${packageInfo.version}');
 
-    setState(() => _isCheckingUpdate = true);
-    final update = await UpdateChecker.checkForUpdate();
-    if (!mounted) return;
-    setState(() => _isCheckingUpdate = false);
+    // Check for updates (skip if already checked this session)
+    try {
+      final update = await UpdateChecker.checkForUpdate();
+      if (!mounted) return;
 
-    if (update != null) {
-      await UpdateChecker.promptAndInstall(context, update);
+      if (update != null) {
+        final installed = await UpdateChecker.promptAndInstall(context, update);
+        if (installed) {
+          // Update was installed and app will restart
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('Update check error: $e');
+      // Silent fail - don't block login on update check failure
     }
   }
 
@@ -194,6 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Stack(
         children: [
+          // Version in top-left
           Positioned(
             top: 12,
             left: 12,
@@ -210,6 +220,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
+          ),
+
+          // Theme toggle in top-right
+          const Positioned(
+            top: 4,
+            right: 4,
+            child: ThemeToggle(),
           ),
 
           // Login UI

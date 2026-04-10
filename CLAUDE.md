@@ -315,3 +315,67 @@ flutter test --coverage
 - Prefer `final` over `var`
 - Use `copyWith` for immutable objects
 - Add comments for complex logic only
+
+## Git Commits
+
+- Never add "Co-authored-by: Claude" or similar attribution messages in git commits
+
+---
+
+## Project Documentation
+
+### Documentation Files
+
+| File | Purpose | When to Update |
+|------|---------|----------------|
+| `CLAUDE.md` | Project guidelines and patterns | When patterns change or new conventions are established |
+| `PATCH.md` | Session-by-session change tracking | After every development session |
+| `CHANGELOG.md` | Version history and release notes | When cutting releases or for major changes |
+
+### Using PATCH.md
+
+Always update `PATCH.md` when making changes:
+
+1. **Before starting work:** Check the "Active Work Queue" for pending items
+2. **During development:** Add entries under the current date
+3. **After completing:** Mark items as complete `[x]`
+4. **For breaking changes:** Include migration notes
+
+### Using CHANGELOG.md
+
+Update `CHANGELOG.md` for:
+
+- New features (under `[Unreleased]` → `Added`)
+- Bug fixes (under `[Unreleased]` → `Fixed`)
+- Breaking changes (under `[Unreleased]` → `Changed` + migration guide)
+- Release versions (move from `[Unreleased]` to `[X.Y.Z]`)
+
+---
+
+## Known Issues & Technical Debt
+
+### Critical (Blocking)
+| Issue | Location | Fix |
+|-------|----------|-----|
+| `final` field reassignment | `theme_provider.dart:10` | Remove `final` keyword |
+| Import path error | `theme_toggle.dart:3` | Use `package:` import |
+| Provider access error | `main.dart:120` | Fix notifier access pattern |
+
+### High Priority
+| Issue | Count | Action |
+|-------|-------|--------|
+| `avoid_print` | 17 | Replace with debugPrint or logger |
+| `withOpacity` deprecated | 7 | Replace with `withValues()` |
+| Unused code | 6 | Remove or use |
+
+### Medium Priority
+| Issue | Count | Action |
+|-------|-------|--------|
+| Deprecated Radio API | 4 | Migrate to RadioGroup |
+| BuildContext async gaps | 2 | Add mounted checks |
+| Widget style issues | 1 | Reorder constructor args |
+
+### Low Priority
+- Test coverage is minimal
+- `flutter_lints` in wrong dependencies section
+- Naming style inconsistencies (`__` in variables)

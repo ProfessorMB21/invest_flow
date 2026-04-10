@@ -34,7 +34,7 @@ class ProfileSection extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 30,
-                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                   child: Icon(
                     Icons.person,
                     size: 40,
@@ -72,7 +72,7 @@ class ProfileSection extends StatelessWidget {
                             fontSize: 12,
                           ),
                         ),
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                       ),
                     ],
                   ),

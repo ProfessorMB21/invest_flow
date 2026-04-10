@@ -18,7 +18,6 @@ class ProjectDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ProjectDetailScreenState extends ConsumerState<ProjectDetailScreen> {
-  late Project? _project;
 
   @override
   void initState() {

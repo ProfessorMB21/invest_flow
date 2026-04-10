@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:investflow/core/models/project.dart';
 
 class ProjectRepository {
@@ -24,7 +25,7 @@ class ProjectRepository {
       }
       return null;
     } catch (e) {
-      print('Error getting project: $e');
+      debugPrint('Error getting project: $e');
       return null;
     }
   }

@@ -1,4 +1,5 @@
 // Dashboard State
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:investflow/core/models/project.dart';
 import 'package:investflow/core/models/user_profile.dart';
@@ -117,7 +118,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       // Trigger rebuild
       ref.invalidateSelf();
     } catch (e) {
-      print('Error creating/updating profile: $e');
+      debugPrint('Error creating/updating profile: $e');
     }
   }
 
@@ -146,7 +147,7 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
       // Just refresh to get latest data
       await refresh();
     } catch (e) {
-      print('Error checking for updates: $e');
+      debugPrint('Error checking for updates: $e');
     }
   }
 
@@ -160,7 +161,6 @@ class DashboardNotifier extends AsyncNotifier<DashboardState> {
   double get totalBalance => _totalBalance;
 
   double get totalInvested {
-    final investments = state.value?.investedProjects ?? [];
     // Note: This calculates from projects, but should calculate from actual investment amounts
     // This is a placeholder - investments should have amount field
     return 0.0; // TODO: Implement proper total invested calculation from InvestmentRepository

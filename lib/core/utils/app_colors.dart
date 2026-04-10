@@ -63,11 +63,11 @@ class AppColors {
 
   // Helper methods for color manipulation
   static Color primaryWithOpacity(double opacity) =>
-      primary.withOpacity(opacity);
+      primary.withValues(alpha: opacity);
 
   static Color errorWithOpacity(double opacity) =>
-      error.withOpacity(opacity);
+      error.withValues(alpha: opacity);
 
   static Color successWithOpacity(double opacity) =>
-      success.withOpacity(opacity);
+      success.withValues(alpha: opacity);
 }

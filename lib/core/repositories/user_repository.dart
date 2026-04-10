@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:investflow/core/models/user_profile.dart';
 
 class UserRepository {
@@ -24,7 +25,7 @@ class UserRepository {
       }
       return null;
     } catch (e) {
-      print('Error getting profile: $e');
+      debugPrint('Error getting profile: $e');
       return null;
     }
   }

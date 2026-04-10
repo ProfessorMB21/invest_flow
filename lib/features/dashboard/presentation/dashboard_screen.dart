@@ -57,7 +57,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppColors.primary.withOpacity(0.1),
+              AppColors.primary.withValues(alpha: 0.1),
               AppColors.surface,
             ],
             begin: Alignment.topCenter,
@@ -153,7 +153,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     Icon(
                       Icons.trending_up,
                       size: 80,
-                      color: AppColors.primary.withOpacity(0.5),
+                      color: AppColors.primary.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     Text(
