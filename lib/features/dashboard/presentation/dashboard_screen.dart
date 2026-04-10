@@ -11,6 +11,7 @@ import 'package:investflow/features/dashboard/presentation/widgets/profile_secti
 import 'package:investflow/features/dashboard/presentation/widgets/project_card.dart';
 import 'package:investflow/features/dashboard/presentation/widgets/stats_summary.dart';
 import 'package:investflow/features/dashboard/presentation/widgets/updates_section.dart';
+import 'package:investflow/features/dashboard/presentation/screens/profile_edit_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -48,7 +49,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // TODO: Implement notifications
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Notifications coming soon!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
             },
           ),
         ],
@@ -134,7 +140,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             totalProjects: state.myProjects.length,
             activeProjects: state.activeProjects.where((p) => p.status == ProjectStatus.active).length,
             totalRaised: state.totalRaised,
-            totalInvested: 0.0, // TODO: Calculate from actual investments
+            totalInvested: ref.read(dashboardNotifierProvider.notifier).totalInvested,
             totalInvestments: state.investedProjects.length,
             investments: const [],
           ),
@@ -187,8 +193,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _navigateToProfileEdit() {
-    // TODO: Implement profile edit screen
-    // context.push('/profile/edit');
+    context.push('/profile/edit');
   }
 
   void _navigateToCreateProject() {
