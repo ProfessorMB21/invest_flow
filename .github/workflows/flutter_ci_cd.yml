@@ -145,6 +145,7 @@ jobs:
 
       - name: Decode .env File
         shell: pwsh
+        if: ${{ secrets.ENV_FILE_BASE64 != '' }}
         run: |
           $content = "${{ secrets.ENV_FILE_BASE64 }}"
           $bytes = [Convert]::FromBase64String($content)
@@ -192,7 +193,7 @@ jobs:
       
       - name: Upload Windows Artifact
         uses: actions/upload-artifact@v4
-        if: success()
+        if : success()
         with:
           name: windows-exe-v${{ needs.calculate-version.outputs.full_version }}
           path: InvestFlow-windows-v${{ needs.calculate-version.outputs.full_version }}.zip
