@@ -191,6 +191,26 @@ This file tracks changes made during development sessions. Each entry should inc
 
 ---
 
+### 2026-04-19 - Fix Dark Theme Color Inconsistency
+
+**Changes:**
+- Removed `customDarkTheme` (had orange seed color and transparent black cards)
+- Updated `darkTheme` to use consistent blue seed (0xFF0052CC) matching light theme
+- Fixed card colors to use solid dark grays instead of transparent/semi-transparent
+- Added explicit `scaffoldBackgroundColor` for proper dark mode base
+- Updated `main.dart` to use single `darkTheme` for both dark and system modes
+
+**Files Modified:**
+- `lib/core/theme/app_theme.dart` - Removed customDarkTheme, updated darkTheme colors
+- `lib/main.dart` - Simplified _getThemeData to use single darkTheme
+
+**Result:**
+- Dark theme now has consistent color scheme with light theme (blue accent)
+- No more semi-transparent cards (black54) causing visual issues
+- Cleaner theme configuration with single source of truth
+
+---
+
 ## Active Work Queue
 
 ### High Priority (Completed ✓)

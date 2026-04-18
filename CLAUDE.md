@@ -387,6 +387,8 @@ Always update `PATCH.md` when making changes:
 3. **After completing:** Mark items as complete `[x]`
 4. **For breaking changes:** Include migration notes
 
+**Rule:** Update PATCH.md and/or CHANGELOG.md before committing changes. Never commit without updating documentation.
+
 ### Using CHANGELOG.md
 
 Update `CHANGELOG.md` for:
@@ -412,6 +414,7 @@ Update `CHANGELOG.md` for:
 | `flutter_lints` dependency | `pubspec.yaml` | Moved to dev_dependencies |
 | CI/CD workflow syntax errors | `.github/workflows/flutter_ci_cd.yml` | Fixed |
 | Dashboard TODOs | `dashboard_screen.dart` | Implemented (notifications, totalInvested, profile edit) |
+| Dark theme inconsistency | `app_theme.dart` | Consolidated to single darkTheme with blue seed, solid colors |
 
 ### High Priority (Pending)
 None - all resolved.
