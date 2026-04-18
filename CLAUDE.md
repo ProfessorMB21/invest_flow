@@ -391,12 +391,17 @@ Always update `PATCH.md` when making changes:
 
 ### Using CHANGELOG.md
 
+**Rule:** Always update `CHANGELOG.md` before committing changes. This is the primary documentation for users and release notes.
+
 Update `CHANGELOG.md` for:
 
 - New features (under `[Unreleased]` → `Added`)
 - Bug fixes (under `[Unreleased]` → `Fixed`)
 - Breaking changes (under `[Unreleased]` → `Changed` + migration guide)
 - Release versions (move from `[Unreleased]` to `[X.Y.Z]`)
+- Security improvements (under `[Unreleased]` → `Security`)
+
+**Classification:** `CHANGELOG.md` is **documentation** — it describes what changed and why for end users. Keep it user-focused, not implementation-focused.
 
 ---
 
