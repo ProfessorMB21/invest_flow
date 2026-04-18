@@ -48,6 +48,7 @@ dependencies:
   pub_semver: ^2.1.4
   package_info_plus: ^9.0.1
   archive: ^4.0.9
+  shared_preferences: ^2.5.3
 
   # Backend - Firebase
   firebase_core: ^4.6.0

@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:investflow/core/services/auth_persistence_service.dart';
 import 'package:investflow/features/auth/logic/auth_provider_interface.dart';
 import 'package:investflow/features/auth/logic/firebase_auth_provider.dart';
 
@@ -8,6 +9,7 @@ class AuthService extends ChangeNotifier {
   AuthService._internal();
 
   late final AuthProviderInterface _provider;
+  final AuthPersistenceService _persistenceService = AuthPersistenceService();
   AuthState _authState = AuthState(isAuthenticated: false);
 
   Future<void> initialize({bool useFirebase = true}) async {
@@ -18,6 +20,7 @@ class AuthService extends ChangeNotifier {
     }
 
     await _provider.initialize();
+    await _persistenceService.initialize();
 
     // listen to auth state changes
     _provider.authStateChanges.listen((state) {
@@ -27,13 +30,16 @@ class AuthService extends ChangeNotifier {
   }
 
   // ==================== Auth methods
-  Future<void> signIn(String email, String password) =>
-      _provider.signIn(email, password);
+  Future<void> signIn(String email, String password, {bool rememberMe = true}) =>
+      _provider.signIn(email, password, rememberMe: rememberMe);
 
   Future<void> signUp(String email, String password, String fullName) =>
       _provider.signUp(email, password, fullName);
 
-  Future<void> signOut() => _provider.signOut();
+  Future<void> signOut({bool clearSavedCredentials = false}) => _provider.signOut(clearSavedCredentials: clearSavedCredentials);
+
+  // ==================== Persistence methods
+  AuthPersistenceService get persistence => _persistenceService;
 
   Future<void> sendPasswordResetEmail(String email) async {
     await _provider.sendPasswordResetEmail(email);

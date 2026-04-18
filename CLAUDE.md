@@ -415,6 +415,40 @@ Update `CHANGELOG.md` for:
 | CI/CD workflow syntax errors | `.github/workflows/flutter_ci_cd.yml` | Fixed |
 | Dashboard TODOs | `dashboard_screen.dart` | Implemented (notifications, totalInvested, profile edit) |
 | Dark theme inconsistency | `app_theme.dart` | Consolidated to single darkTheme with blue seed, solid colors |
+| Auto-login without consent | `firebase_auth_provider.dart` | Added "Remember me" toggle controlling Firebase persistence |
+| Version text invisible | `login_screen.dart:281` | Changed from `Colors.white54` to theme-aware `colorScheme.onSurface` |
+
+---
+
+## Authentication Features
+
+### Remember Me / Quick Login
+
+The app implements configurable session persistence:
+
+```dart
+// AuthPersistenceService handles saved credentials and persistence
+final persistence = AuthPersistenceService();
+
+// Check if user wants to stay logged in
+bool rememberMe = persistence.rememberMe;
+
+// Get saved credentials for quick login
+String? savedEmail = persistence.savedEmail;
+String? savedUsername = persistence.savedUsername;
+```
+
+**Features:**
+- **Remember me checkbox** on login screen (default: true)
+- **Quick login**: Shows saved username with password-only entry after first successful login
+- **Firebase persistence** controlled by user preference (LOCAL vs NONE)
+- **Clear on logout**: Optional credential clearing on sign out
+
+**UI Flow:**
+1. First login: Enter email + password, check "Remember me"
+2. Next launch: Shows user card + password field (quick login)
+3. Tap "Not you?" to switch to full email entry
+4. Uncheck "Remember me" → session not persisted between launches
 
 ### High Priority (Pending)
 None - all resolved.

@@ -2,9 +2,9 @@ abstract class AuthProviderInterface {
   Future<void> initialize();
 
   // Auth methods
-  Future<void> signIn(String email, String password);
+  Future<void> signIn(String email, String password, {bool rememberMe = true});
   Future<void> signUp(String email, String password, String fullName);
-  Future<void> signOut();
+  Future<void> signOut({bool clearSavedCredentials = false});
   Future<void> sendPasswordResetEmail(String email); // coming soon
 
   // State streams

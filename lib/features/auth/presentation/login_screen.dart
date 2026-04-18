@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:investflow/core/services/auth_persistence_service.dart';
 import 'package:investflow/core/services/update_checker.dart';
 import 'package:investflow/features/auth/logic/auth_service.dart';
 import 'package:investflow/features/dashboard/presentation/widgets/theme_toggle.dart';
@@ -31,6 +32,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _isSignUpMode = false;
+  bool _rememberMe = true;
+
+  // For username-based quick login
+  bool _hasSavedCredentials = false;
+  String? _savedEmail;
+  String? _savedUsername;
+  bool _showPasswordOnly = false;
 
   String _appVersion = '';
 
@@ -74,8 +82,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _initializeScreen() async {
     final version = await _getVersionFromFile();
+
+    // Check for saved credentials
+    final persistenceService = AuthPersistenceService();
+    await persistenceService.initialize();
+
+    _rememberMe = persistenceService.rememberMe;
+    _savedEmail = persistenceService.savedEmail;
+    _savedUsername = persistenceService.savedUsername;
+    _hasSavedCredentials = persistenceService.hasSavedCredentials;
+
     if (!mounted) return;
-    setState(() => _appVersion = 'v$version');
+    setState(() {
+      _appVersion = 'v$version';
+      // Pre-fill email if we have saved credentials
+      if (_savedEmail != null && _savedEmail!.isNotEmpty) {
+        _emailCtrl.text = _savedEmail!;
+      }
+    });
 
     // Check for updates (skip if already checked this session)
     try {
@@ -95,12 +119,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  // ======================== Quick login helpers
+  void _switchToFullLogin() {
+    setState(() {
+      _showPasswordOnly = false;
+      _emailCtrl.clear();
+    });
+  }
+
+  void _switchToQuickLogin() {
+    if (_hasSavedCredentials) {
+      setState(() {
+        _showPasswordOnly = true;
+        _emailCtrl.text = _savedEmail ?? '';
+      });
+    }
+  }
+
   // ========================= Login/Sign In
   Future<void> _login() async {
     final currentState = _formKey.currentState;
     if (currentState == null || !currentState.validate()) {
       if (kDebugMode) {
-        print('Form validation failed');
+        debugPrint('Form validation failed');
         return;
       }
     }
@@ -118,15 +159,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       if (kDebugMode) {
-        print('>>> Attempting Firebase login...');
+        debugPrint('>>> Attempting Firebase login...');
       }
       await AuthService().signIn(
         _emailCtrl.text.trim(),
         _passCtrl.text,
+        rememberMe: _rememberMe,
       );
 
       if (kDebugMode) {
-        print('>>> Login successful!');
+        debugPrint('>>> Login successful!');
       }
       if (mounted) context.go('/');
     } catch (e) {
@@ -235,8 +277,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               duration: const Duration(microseconds: 300),
               child: Text(
                 'ver. $_appVersion',
-                style: const TextStyle(
-                  color: Colors.white54,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 0.5
@@ -344,23 +386,88 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 16),
                         ],
 
-                        TextFormField(
-                          controller: _emailCtrl,
-                          focusNode: _emailFocusNode,
-                          textInputAction: TextInputAction.next,
-                          onFieldSubmitted: _onEmailSubmitted,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                              labelText: 'Email',
-                              hintText: 'you@example.com',
-                              prefixIcon: Icon(Icons.email_outlined),
-                              border: OutlineInputBorder()
+                        // Quick login: Show saved username with password only
+                        if (!_isSignUpMode && _showPasswordOnly && _hasSavedCredentials) ...[
+                          // User card with saved credentials
+                          Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: const Color(0xFF0052CC).withValues(alpha: 0.1),
+                                    child: Text(
+                                      _savedUsername?.isNotEmpty == true
+                                          ? _savedUsername![0].toUpperCase()
+                                          : _savedEmail?[0].toUpperCase() ?? 'U',
+                                      style: const TextStyle(
+                                        color: Color(0xFF0052CC),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _savedUsername ?? 'User',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        Text(
+                                          _savedEmail ?? '',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: _switchToFullLogin,
+                                    child: const Text('Not you?'),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          validator: (value) => value == null || value.isEmpty || !value.contains('@')
-                              ? 'Please enter a valid email'
-                              : null,
-                        ),
-                        const SizedBox(height: 16),
+                          const SizedBox(height: 16),
+                        ] else if (!_isSignUpMode) ...[
+                          // Full email field
+                          TextFormField(
+                            controller: _emailCtrl,
+                            focusNode: _emailFocusNode,
+                            textInputAction: TextInputAction.next,
+                            onFieldSubmitted: _onEmailSubmitted,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: InputDecoration(
+                                labelText: 'Email',
+                                hintText: 'you@example.com',
+                                prefixIcon: const Icon(Icons.email_outlined),
+                                border: const OutlineInputBorder(),
+                                suffixIcon: _hasSavedCredentials
+                                    ? TextButton(
+                                        onPressed: _switchToQuickLogin,
+                                        child: const Text('Use saved'),
+                                      )
+                                    : null,
+                            ),
+                            validator: (value) => value == null || value.isEmpty || !value.contains('@')
+                                ? 'Please enter a valid email'
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                        ],
 
                         TextFormField(
                           controller: _passCtrl,
@@ -388,6 +495,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ? 'Password must be at least 6 characters'
                               : null,
                         ),
+
+                        // Remember me checkbox (sign in only)
+                        if (!_isSignUpMode) ...[
+                          const SizedBox(height: 8),
+                          CheckboxListTile(
+                            value: _rememberMe,
+                            onChanged: (value) {
+                              setState(() => _rememberMe = value ?? true);
+                            },
+                            title: const Text('Remember me'),
+                            subtitle: const Text('Stay logged in on this device'),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                          ),
+                        ],
                         const SizedBox(height: 24),
 
                         // Main action button

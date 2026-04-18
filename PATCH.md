@@ -211,6 +211,49 @@ This file tracks changes made during development sessions. Each entry should inc
 
 ---
 
+### 2026-04-19 - Implement Auth Persistence and Quick Login
+
+**Changes:**
+- Fixed auto-login issue by adding "Remember me" toggle that controls Firebase persistence
+- Created `AuthPersistenceService` for managing saved credentials and remember me preference
+- Added quick login feature: shows saved username/email with password-only entry after first login
+- Updated login screen with:
+  - "Remember me" checkbox with subtitle explaining behavior
+  - User card showing saved username/avatar when quick login is available
+  - "Use saved" button to switch to quick login mode
+  - "Not you?" button to switch back to full email entry
+- Updated auth interfaces to support `rememberMe` and `clearSavedCredentials` parameters
+
+**Files Modified:**
+- `lib/core/services/auth_persistence_service.dart` - Created new service
+- `lib/features/auth/logic/auth_provider_interface.dart` - Added rememberMe parameter
+- `lib/features/auth/logic/firebase_auth_provider.dart` - Implemented persistence logic
+- `lib/features/auth/logic/supabaase_client.dart` - Updated to match interface
+- `lib/features/auth/logic/auth_service.dart` - Exposed persistence service
+- `lib/features/auth/presentation/login_screen.dart` - Added UI for remember me and quick login
+- `pubspec.yaml` - Added shared_preferences dependency
+
+**How it works:**
+- User checks "Remember me" (default: true) → Firebase Auth uses LOCAL persistence
+- User unchecks "Remember me" → Firebase Auth uses NONE (in-memory only)
+- On successful login with rememberMe=true, email/username saved to SharedPreferences
+- Next app launch: if saved credentials exist, shows quick login UI with user card
+- User can switch between quick login (password only) and full login (email+password)
+
+---
+
+### 2026-04-19 - Fix Version Text Visibility in Light Mode
+
+**Changes:**
+- Fixed hardcoded `Colors.white54` for version text in login screen
+- Changed to theme-aware color: `Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)`
+- Version text now visible in both light and dark modes
+
+**Files Modified:**
+- `lib/features/auth/presentation/login_screen.dart:281` - Updated text color to use theme
+
+---
+
 ## Active Work Queue
 
 ### High Priority (Completed ✓)

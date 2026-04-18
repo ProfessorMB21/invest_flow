@@ -2,11 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:investflow/core/services/auth_persistence_service.dart';
 import 'package:investflow/features/auth/logic/auth_provider_interface.dart';
 
 class FirebaseAuthProvider implements AuthProviderInterface{
   FirebaseAuth? _auth;
   FirebaseFirestore? _firestore;
+  final AuthPersistenceService _persistenceService = AuthPersistenceService();
 
   @override
   Future<void> initialize() async {
@@ -14,15 +16,22 @@ class FirebaseAuthProvider implements AuthProviderInterface{
     _auth = FirebaseAuth.instance;
     _firestore = FirebaseFirestore.instance;
 
+    // Initialize persistence settings
+    await _persistenceService.initialize();
+    await _persistenceService.initializePersistence();
+
     if (kDebugMode) {
-      print('***** Firebase Auth Provider Initialized *****');
+      debugPrint('***** Firebase Auth Provider Initialized *****');
     }
   }
 
   // ======================= Auth methods
   @override
-  Future<void> signIn(String email, String password) async {
+  Future<void> signIn(String email, String password, {bool rememberMe = true}) async {
     try {
+      // Update persistence based on remember me setting before signing in
+      await _persistenceService.setRememberMe(rememberMe);
+
       await _auth!.signInWithEmailAndPassword(email: email, password: password);
 
       // auto create profile if doesn't exist
@@ -33,6 +42,15 @@ class FirebaseAuthProvider implements AuthProviderInterface{
             user.email ?? '',
             user.displayName ?? 'user${user.uid}'
         );
+
+        // Save credentials for quick login next time
+        if (rememberMe) {
+          final profile = await getUserProfile(user.uid);
+          await _persistenceService.saveCredentials(
+            email,
+            username: profile?['fullName'] ?? user.displayName,
+          );
+        }
       }
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.code, e.message ?? '');
@@ -61,8 +79,11 @@ class FirebaseAuthProvider implements AuthProviderInterface{
   }
 
   @override
-  Future<void> signOut() async {
+  Future<void> signOut({bool clearSavedCredentials = false}) async {
     await _auth!.signOut();
+    if (clearSavedCredentials) {
+      await _persistenceService.clearSavedCredentials();
+    }
   }
 
   @override

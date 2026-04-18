@@ -15,7 +15,7 @@ class SupabaseAuthProvider implements AuthProviderInterface {
   }
 
   @override
-  Future<void> signIn(String email, String password) async {
+  Future<void> signIn(String email, String password, {bool rememberMe = true}) async {
     await _supabase!.auth.signInWithPassword(
       email: email,
       password: password,
@@ -23,7 +23,7 @@ class SupabaseAuthProvider implements AuthProviderInterface {
   }
 
   @override
-  Future<void> signOut() async {
+  Future<void> signOut({bool clearSavedCredentials = false}) async {
     await _supabase!.auth.signOut();
   }
 
