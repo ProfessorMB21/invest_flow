@@ -139,9 +139,8 @@ class InvestFlowApp extends ConsumerWidget {
       case ThemeMode.light:
         return AppTheme.lightTheme;
       case ThemeMode.dark:
-        return AppTheme.customDarkTheme;
       case ThemeMode.system:
-        return AppTheme.darkTheme; // fallback
+        return AppTheme.darkTheme;
     }
   }
 }

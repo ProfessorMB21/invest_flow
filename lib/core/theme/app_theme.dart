@@ -21,25 +21,6 @@ class AppTheme {
     )
   );
 
-  static ThemeData customDarkTheme = ThemeData(
-    useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFFFFAD33),
-      brightness: Brightness.dark
-    ),
-    textTheme: GoogleFonts.interTextTheme(),
-    cardTheme: CardThemeData(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.black54,
-      surfaceTintColor: Colors.transparent
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-      filled: true,
-    )
-  );
-
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
@@ -50,13 +31,14 @@ class AppTheme {
     cardTheme: CardThemeData(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.grey.shade900,
+      color: const Color(0xFF1E1E1E),
       surfaceTintColor: Colors.transparent,
     ),
     inputDecorationTheme: InputDecorationTheme(
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       filled: true,
-      fillColor: Colors.grey.shade800,
+      fillColor: const Color(0xFF2C2C2C),
     ),
+    scaffoldBackgroundColor: const Color(0xFF121212),
   );
 }
