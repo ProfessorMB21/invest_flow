@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Profile edit screen** - Full profile editing with name, phone, bio fields
 - **Debug test mode** for update checker with `runTest()` method
 - Test button (bug icon) in login screen for debug builds
+- **AuthPersistenceService** - Manages saved credentials and remember me preference
+- **"Remember me" toggle** on login screen controlling Firebase Auth persistence
+- **Quick login feature** - Shows saved username with password-only entry after first login
+- `rememberMe` parameter to auth signIn methods
+- `clearSavedCredentials` parameter to auth signOut methods
 
 ### Changed
 - Updated CLAUDE.md with documentation structure
@@ -31,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI/CD workflow: Fixed syntax errors, added version sync verification
 - Login screen version display now reads from `version.json`
 - Dashboard TODOs implemented (notifications, totalInvested calculation, profile edit)
+- **Dark theme colors** - Consolidated to single theme with consistent blue accent, solid card colors
 
 ### Fixed
 - Theme provider compilation errors (removed `final` from `_themeMode`)
@@ -41,6 +47,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed unused imports and variables (6 instances)
 - Wrapped debug prints in `kDebugMode` checks
 - CI/CD workflow syntax errors (`if : success()` → `if: success()`)
+- **Dark theme inconsistency** - Removed customDarkTheme, unified to single darkTheme with blue seed
+- **Version text invisible in light mode** - Changed from hardcoded `Colors.white54` to theme-aware color
+- **Auto-login despite "Remember me" disabled** - Added check to sign out persisted sessions when preference is false
+
+### Security
+- **Auth persistence control** - Users can now control whether sessions persist across app restarts
+- **Quick login** - Saved credentials allow username-based quick login while maintaining security
 
 ### Known Issues
 - 2 BuildContext async gaps remaining (non-blocking)
