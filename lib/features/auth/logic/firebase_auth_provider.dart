@@ -20,6 +20,17 @@ class FirebaseAuthProvider implements AuthProviderInterface{
     await _persistenceService.initialize();
     await _persistenceService.initializePersistence();
 
+    // BUG FIX: If user has "Remember me" disabled but Firebase has a
+    // persisted session, sign out immediately to respect user preference
+    if (!_persistenceService.rememberMe && _auth!.currentUser != null) {
+      if (kDebugMode) {
+        debugPrint('Remember me is disabled - signing out persisted session');
+      }
+      await _auth!.signOut();
+      // Clear any saved credentials as well
+      await _persistenceService.clearSavedCredentials();
+    }
+
     if (kDebugMode) {
       debugPrint('***** Firebase Auth Provider Initialized *****');
     }

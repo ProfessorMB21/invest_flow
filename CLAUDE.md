@@ -415,7 +415,7 @@ Update `CHANGELOG.md` for:
 | CI/CD workflow syntax errors | `.github/workflows/flutter_ci_cd.yml` | Fixed |
 | Dashboard TODOs | `dashboard_screen.dart` | Implemented (notifications, totalInvested, profile edit) |
 | Dark theme inconsistency | `app_theme.dart` | Consolidated to single darkTheme with blue seed, solid colors |
-| Auto-login without consent | `firebase_auth_provider.dart` | Added "Remember me" toggle controlling Firebase persistence |
+| Auto-login without consent | `firebase_auth_provider.dart` | Added "Remember me" toggle + sign out on init if disabled |
 | Version text invisible | `login_screen.dart:281` | Changed from `Colors.white54` to theme-aware `colorScheme.onSurface` |
 
 ---
@@ -448,7 +448,9 @@ String? savedUsername = persistence.savedUsername;
 1. First login: Enter email + password, check "Remember me"
 2. Next launch: Shows user card + password field (quick login)
 3. Tap "Not you?" to switch to full email entry
-4. Uncheck "Remember me" → session not persisted between launches
+4. Uncheck "Remember me" → session not persisted, user signed out on app restart
+
+**Important:** If the user previously enabled "Remember me" but later disables it, they will be automatically signed out on the next app launch to respect the preference change.
 
 ### High Priority (Pending)
 None - all resolved.

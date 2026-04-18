@@ -275,6 +275,22 @@ This file tracks changes made during development sessions. Each entry should inc
 
 ---
 
+### 2026-04-19 - Fix Auto-Login Despite "Remember Me" Disabled
+
+**Bug:** User was auto-logged in on app restart even when "Remember me" was unchecked. This happened because Firebase Auth restores persisted sessions at initialization, before the app could check user preferences.
+
+**Fix:** Added logic in `FirebaseAuthProvider.initialize()` to check if a persisted session exists when "Remember me" is disabled. If so, sign out immediately and clear saved credentials to respect user preference.
+
+**Files Modified:**
+- `lib/features/auth/logic/firebase_auth_provider.dart:27-38` - Added remember me check with auto-signout
+
+**Behavior Now:**
+- User logs in with "Remember me" checked → session persisted, auto-login works
+- User logs in with "Remember me" unchecked → session in-memory only, no auto-login
+- User previously had "Remember me" but now disabled → signed out on next app launch
+
+---
+
 ## Notes
 
 - Always update this file when making changes
